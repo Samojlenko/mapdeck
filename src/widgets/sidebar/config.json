@@ -1,0 +1,13 @@
+{
+    "base": {
+        "showInSidebar": false
+    },
+    "size": {
+        "defaultWidth": null,
+        "defaultHeight": null,
+        "minWidth": null,
+        "minHeight": null,
+        "maxWidth": null,
+        "maxHeight": null
+    }
+}

@@ -1,0 +1,75 @@
+/* Sidebar widget styles */
+.sidebar {
+    background-color: var(--color-background);
+    display: flex;
+    flex-direction: column;
+    transition: width var(--transition-normal);
+    width: 15.625rem; /* 250px */
+}
+
+/* Sidebar Modifier - Collapsed */
+.sidebarCollapsed {
+    width: 3.75rem; /* 60px */
+}
+
+/* Sidebar Widgets List Element */
+.sidebar__widgetsList {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-sm) 0;
+}
+
+/* Sidebar Widget Button Element */
+.sidebar__widgetButton {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    border: none;
+    cursor: pointer;
+    background-color: var(--color-background);
+    transition: background-color var(--transition-fast);
+    border-left: var(--border-lg) solid transparent;
+}
+
+.sidebar__widgetButton:hover {
+    background-color: var(--color-hover);
+}
+
+/* Sidebar Widget Button Modifier */
+.sidebar__widgetButtonOpen {
+    border-left-color: var(--color-primary);
+}
+
+/* Sidebar Widget Icon Element */
+.sidebar__widgetIcon {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar__widgetIcon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Sidebar Icon Placeholder Element */
+.sidebar__iconPlaceholder {
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-secondary);
+    border-radius: var(--radius-sm);
+}
+
+/* Sidebar Widget Name Element */
+.sidebar__widgetName {
+    text-align: left;
+    font-size: var(--font-size-md);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

@@ -1,0 +1,1 @@
+export { LocaleStore } from "./LocaleStore";

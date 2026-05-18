@@ -1,0 +1,10 @@
+build
+
+**/node_modules
+docs/PLAN.md
+
+AGENT.md
+.qwen
+
+# Example data — to be added
+public/

@@ -1,0 +1,208 @@
+/* Layer tree widget styles */
+
+/* Main container block */
+.layerTree {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Tree container for scrollable content */
+.layerTree__treeContainer {
+    overflow: auto;
+    flex: 1;
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
+/* Header section element */
+.layerTree__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--space-sm);
+}
+
+/* Update button element */
+.layerTree__updateButton {
+    margin-right: var(--space-sm);
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    border: var(--border-sm) solid transparent;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background-color: var(--color-background);
+    color: var(--color-secondary);
+    transition:
+        border-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.layerTree__updateButton:hover {
+    border-color: var(--color-secondary);
+    color: var(--color-primary);
+}
+
+/* Search input element */
+.layerTree__searchInput {
+    flex: 1;
+    margin-right: var(--space-sm);
+    padding: var(--space-sm);
+    background-color: var(--color-background);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.layerTree__searchInput:hover {
+    border-color: var(--color-secondary);
+}
+
+.layerTree__searchInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.layerTree__searchInput::placeholder {
+    color: var(--color-secondary);
+}
+
+/* Base node container element */
+.layerTree__nodeContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    line-height: var(--space-lg);
+    padding-left: calc(
+        var(--depth, 0) * (var(--icon-sm) + var(--space-sm)) + var(--space-sm)
+    );
+    padding-right: var(--space-sm);
+}
+
+.layerTree__nodeContainer:hover {
+    background: var(--color-hover);
+}
+
+.layerTree__leftSection,
+.layerTree__rightSection {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+/* Left section element: expand arrow, eye icon, type icon, title */
+.layerTree__leftSection {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Common base for all icon-buttons */
+.layerTree__iconButton {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: var(--border-sm) solid transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    color: var(--color-secondary);
+    transition:
+        border-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.layerTree__iconButton:hover {
+    color: var(--color-primary);
+}
+
+/* Action buttons element (eye, zoom, open) */
+.layerTree__actionButton {
+    composes: layerTree__iconButton;
+}
+
+.layerTree__actionButton:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.layerTree__actionButton:disabled:hover {
+    color: var(--color-secondary);
+}
+
+/* Active state for action button when panel is open */
+.layerTree__actionButtonActive {
+    color: var(--color-primary);
+}
+
+.layerTree__actionButtonActive:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    color: var(--color-secondary);
+    border-color: transparent;
+}
+
+.layerTree__actionButtonActive:disabled:hover {
+    color: var(--color-secondary);
+}
+
+/* Layer type icon container element */
+.layerTree__typeIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    flex-shrink: 0;
+}
+
+/* Node title element with ellipsis for overflow */
+.layerTree__nodeTitle {
+    font-weight: var(--font-regular);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Expand/collapse button element */
+.layerTree__expandButton {
+    composes: layerTree__iconButton;
+    flex-shrink: 0;
+}
+
+/* ==================== State Containers ==================== */
+
+.layerTree__loadingContainer,
+.layerTree__emptyContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(var(--space-md) * 5 / 2) var(--space-md);
+    text-align: center;
+    color: var(--color-secondary);
+    font-style: italic;
+}
+
+/* ==================== CollapsableMenu Integration ==================== */
+
+.layerTree__menuContainer {
+    margin: var(--space-sm);
+}
+
+.layerTree__menuPanel {
+    padding: var(--space-sm);
+    box-shadow: var(--shadow-sm);
+}

@@ -1,0 +1,13 @@
+{
+    "base": {
+        "showInSidebar": false
+    },
+    "size": {
+        "defaultWidth": 20,
+        "defaultHeight": 15,
+        "minWidth": 15,
+        "minHeight": 15,
+        "maxWidth": 80,
+        "maxHeight": 45
+    }
+}

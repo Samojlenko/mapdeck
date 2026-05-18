@@ -1,0 +1,22 @@
+{
+    "base": {
+        "showInSidebar": true
+    },
+    "size": {
+        "defaultWidth": 20,
+        "defaultHeight": 45,
+        "minWidth": 10,
+        "minHeight": 23,
+        "maxWidth": 50,
+        "maxHeight": 45
+    },
+    "settings": [
+        {
+            "id": "layer-tree.data-source-url",
+            "type": "string",
+            "defaultValue": "./catalog.json",
+            "label": "Data Source URL",
+            "description": "URL of the data source for the layer tree"
+        }
+    ]
+}

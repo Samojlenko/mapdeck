@@ -1,0 +1,43 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "jsx": "react-jsx",
+
+        "module": "ES2022",
+        "moduleResolution": "bundler",
+        "baseUrl": "./src",
+        "resolveJsonModule": true,
+        "allowJs": false,
+
+        "noEmit": true,
+        "isolatedModules": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitOverride": true,
+        "exactOptionalPropertyTypes": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "verbatimModuleSyntax": true,
+
+        "paths": {
+            "@app/*": ["app/*"],
+            "@core/*": ["core/*"],
+            "@layer-tools/*": ["layer-tools/*"],
+            "@map-tools/*": ["map-tools/*"],
+            "@modules/*": ["modules/*"],
+            "@widgets/*": ["widgets/*"]
+        },
+        "types": ["node", "vite/client"]
+    },
+    "include": ["src/**/*", "vite.config.ts"],
+    "exclude": ["node_modules", "build"]
+}

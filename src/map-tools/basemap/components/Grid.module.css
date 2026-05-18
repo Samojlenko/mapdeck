@@ -1,0 +1,50 @@
+.basemap_component {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-background);
+    box-shadow: var(--shadow-md);
+    pointer-events: auto;
+}
+
+.basemap_card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-sm);
+    background-color: var(--color-background);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+    width: var(--tool-width-sm);
+}
+
+.basemap_card:hover {
+    background-color: var(--color-hover);
+    border-color: var(--color-secondary);
+    box-shadow: var(--shadow-sm);
+}
+
+.basemap_card_active {
+    background-color: var(--color-primary);
+    color: var(--color-background);
+    border-color: var(--color-primary);
+}
+
+.basemap_card_active:hover {
+    background-color: var(--color-primary);
+}
+
+.basemap_card_preview {
+    width: calc(var(--tool-width-sm) - var(--space-lg));
+    height: calc(var(--tool-width-sm) - var(--space-lg));
+    border-radius: var(--radius-sm);
+    background-size: contain;
+    margin-bottom: var(--space-sm);
+    border: var(--border-sm) solid var(--color-border);
+}

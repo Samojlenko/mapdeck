@@ -1,0 +1,8 @@
+{
+    "name": "mapdeck-dev",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "dev",
+    "workspaceFolder": "/app",
+    "shutdownAction": "stopCompose",
+    "remoteUser": "node"
+}

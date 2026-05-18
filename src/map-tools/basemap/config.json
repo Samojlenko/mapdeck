@@ -1,0 +1,21 @@
+{
+    "active_basemap_id": "osm_standard",
+    "available_basemaps": [
+        {
+            "id": "osm_standard",
+            "name": "OpenStreetMap Standard",
+            "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "attribution": "© OpenStreetMap contributors",
+            "minZoom": 0,
+            "maxZoom": 19
+        },
+        {
+            "id": "esri_world_imagery",
+            "name": "Esri World Imagery",
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "attribution": "Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+            "minZoom": 0,
+            "maxZoom": 19
+        }
+    ]
+}

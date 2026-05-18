@@ -1,0 +1,3 @@
+.input {
+    composes: inputBase from "./shared.module.css";
+}
