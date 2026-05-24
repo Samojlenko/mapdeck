@@ -1,4 +1,4 @@
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import type { RenderUnit, SnapshotItem } from "@core/framework/types";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
 import { applyWmsGrouping } from "@core/shared/protocols/ogc/wms/grouper";
@@ -14,17 +14,16 @@ export function buildDesiredRenderUnits(
     const desired = new Map<string, RenderUnit>();
 
     for (const item of snapshot) {
-        if (!item.visible || !item.config) continue;
+        if (!item.visible || !item.descriptor) continue;
 
-        const role = item.config.role;
+        const role = item.descriptor.role;
         if (!adapterFactory.has(role)) continue;
 
         desired.set(item.id, {
             id: item.id,
             nodeIds: [item.id],
             adapter: adapterFactory.get(role),
-            config: item.config,
-            sourceUrl: item.sourceUrl ?? "",
+            descriptor: item.descriptor,
         });
     }
 
@@ -66,9 +65,9 @@ export function getNativeRenderOrder(
     const seen = new Set<string>();
 
     for (const item of snapshot) {
-        if (!item.visible || !item.config) continue;
-        const role = item.config.role;
-        if (role !== LayerRole.RASTER && role !== LayerRole.VECTOR) continue;
+        if (!item.visible || !item.descriptor) continue;
+        const role = item.descriptor.role;
+        if (role !== LayerRoles.RASTER && role !== LayerRoles.VECTOR) continue;
 
         const renderId = nodeToRenderId.get(item.id);
         if (renderId && !seen.has(renderId)) {

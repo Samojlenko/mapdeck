@@ -1,33 +1,40 @@
 import type maplibregl from "maplibre-gl";
-import type { LayerAdapter, LayerConfig, RenderUnit } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import type {
+    LayerAdapter,
+    RenderUnit,
+    RenderDescriptor,
+} from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import { isVector3DConfig } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 
 /**
  * Adapter for 3D vector layers (lines, paths).
- * Implements LayerAdapter interface for LayerRole.VECTOR3D.
+ * Implements LayerAdapter interface for LayerRoles.VECTOR3D.
  *
- * Stub implementation — renders GeoJSON data from URL using deck.gl LineLayer.
+ * Stub implementation — renders GeoJSON data from URL using maplibre line layer.
  */
-export class Vector3DAdapter implements LayerAdapter {
-    readonly supportedRole = LayerRole.VECTOR3D;
+export class Vector3DAdapter implements LayerAdapter<
+    typeof LayerRoles.VECTOR3D
+> {
+    readonly role = LayerRoles.VECTOR3D;
 
     addToMap(
         layerId: string,
-        config: LayerConfig,
-        sourceRef: string,
+        descriptor: RenderDescriptor<typeof LayerRoles.VECTOR3D>,
         map: maplibregl.Map,
     ): void {
         try {
-            if (!isVector3DConfig(config)) {
+            if (!isVector3DConfig(descriptor.config)) {
                 throw new Error(
-                    `Config is not for vector3d role: ${config.role}`,
+                    `Config is not for vector3d role: ${descriptor.config.role}`,
                 );
             }
 
+            const { config, sourceUrl } = descriptor;
+
             this._cleanupExisting(layerId, map);
-            this._addSourceAndLayer(layerId, sourceRef, config, map);
+            this._addSourceAndLayer(layerId, sourceUrl, config, map);
 
             const visible = config.visible ?? true;
             if (!visible) {
@@ -113,13 +120,11 @@ export class Vector3DAdapter implements LayerAdapter {
         }
     }
 
-    updateConfig(renderUnit: RenderUnit, map: maplibregl.Map): void {
+    updateConfig(
+        renderUnit: RenderUnit<typeof LayerRoles.VECTOR3D>,
+        map: maplibregl.Map,
+    ): void {
         this.removeFromMap(renderUnit.id, map);
-        this.addToMap(
-            renderUnit.id,
-            renderUnit.config,
-            renderUnit.sourceUrl,
-            map,
-        );
+        this.addToMap(renderUnit.id, renderUnit.descriptor, map);
     }
 }

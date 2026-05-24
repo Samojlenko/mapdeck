@@ -1,12 +1,12 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import BaseNode, { type BaseNodeProps } from "./BaseNode";
-import { CollapsableMenu } from "@core/ui/components";
+import { CollapsibleMenu } from "@core/ui/components";
 import { ReportDownloads } from "./ReportDownloads";
 
 import type { TreeNode } from "@core/framework/types";
 import { isLayerNode } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles, type LayerRole } from "@core/framework/types";
 import { useRootStore } from "@core/framework/store";
 import { logger } from "@core/shared/diagnostics/logger";
 import styles from "./Widget.module.css";
@@ -37,7 +37,8 @@ const ItemNode: (props: ItemNodeProps) => React.ReactNode = observer(
 
         // Get the active display role to determine tools
         const displayRole = node.roles.display;
-        const roleForTools = displayRole.layerConfig.role ?? LayerRole.RASTER;
+        const roleForTools =
+            displayRole.render.config.role ?? LayerRoles.RASTER;
 
         // Check if this node has any tools available
         const hasTools =
@@ -92,7 +93,7 @@ const ItemMenu: (props: {
     const treeStore = rootStore.treeStore;
 
     return (
-        <CollapsableMenu
+        <CollapsibleMenu
             items={rootStore.layerToolStore.getLayerTools(roleForTools)}
             open={true}
             onClose={() => treeStore.togglePanel(node.id)}
@@ -103,7 +104,7 @@ const ItemMenu: (props: {
             nodeId={node.id}
         >
             {hasReports && <ReportDownloads nodeId={node.id} />}
-        </CollapsableMenu>
+        </CollapsibleMenu>
     );
 });
 

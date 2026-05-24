@@ -38,10 +38,13 @@ export type {
 export { isMapTool, isMapActionTool } from "./framework/tools";
 
 // === Domain types ===
-export { LayerRole } from "./domain/layer";
+export type { LayerRole } from "./domain/layer";
+export { LayerRoles, BUILT_IN_ROLES } from "./domain/layer";
 export type {
     LayerConfig,
     LayerConfigBase,
+    LayerConfigFor,
+    LayerConfigRegistry,
     RasterLayerConfig,
     VectorLayerConfig,
     PointCloudLayerConfig,
@@ -51,12 +54,16 @@ export type {
     LayerToolRole,
     RenderUnit,
     SnapshotItem,
+    RenderDescriptor,
 } from "./domain/layer";
 export {
     isRasterConfig,
     isVectorConfig,
     isPointCloudConfig,
     isVector3DConfig,
+    makeRenderDescriptor,
+    updateDescriptorConfig,
+    isDescriptorRole,
 } from "./domain/layer";
 
 export type {

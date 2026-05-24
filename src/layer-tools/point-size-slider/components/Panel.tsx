@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/framework/store";
-import { isLayerNode, isPointCloudConfig } from "@core/framework/types";
+import {
+    isLayerNode,
+    isPointCloudConfig,
+    LayerRoles,
+} from "@core/framework/types";
 import type { PointCloudLayerConfig } from "@core/framework/types";
 import { useDebounce } from "@core/framework/hooks";
 import { formatDict } from "@core/framework/i18n";
@@ -32,14 +36,14 @@ export const PointSizeSliderComponent: (
     }
 
     const displayRole = node.roles.display;
-    if (!isPointCloudConfig(displayRole.layerConfig)) {
+    if (!isPointCloudConfig(displayRole.render.config)) {
         logger.warn(
             `PointSizeSlider: config for node ${nodeId} is not a point cloud config`,
         );
         return null;
     }
 
-    const config = displayRole.layerConfig as PointCloudLayerConfig;
+    const config = displayRole.render.config as PointCloudLayerConfig;
 
     const applyPointSizeUpdate = useCallback(
         (newPointSize: number) => {
@@ -47,10 +51,9 @@ export const PointSizeSliderComponent: (
                 return;
             }
 
-            rootStore.treeStore.updateLayerConfig<PointCloudLayerConfig>(
-                nodeId,
-                { pointSize: newPointSize },
-            );
+            rootStore.treeStore.updateLayerConfig<
+                typeof LayerRoles.POINT_CLOUD
+            >(nodeId, { pointSize: newPointSize });
             lastAppliedValueRef.current = newPointSize;
 
             logger.debug(

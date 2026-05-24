@@ -1,10 +1,9 @@
 import type maplibregl from "maplibre-gl";
-import { makeAutoObservable, runInAction, reaction } from "mobx";
+import { comparer, runInAction, reaction } from "mobx";
 
-import { layerAdapterFactory } from "@core/domain/adapters";
+import { logger } from "@core/shared/diagnostics/logger";
 import type { LayerConfig, RenderUnit } from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
-import { logger } from "@core/shared/diagnostics/logger";
 import {
     buildGroupedRenderUnits,
     getNativeRenderOrder,
@@ -31,7 +30,6 @@ export class LayerManager {
 
     constructor(rootStore: RootStore) {
         this.rootStore = rootStore;
-        makeAutoObservable(this);
     }
 
     // ==================== Lifecycle ====================
@@ -76,7 +74,7 @@ export class LayerManager {
                 const snapshot = this.rootStore.treeStore.layerSnapshot;
                 const desired = buildGroupedRenderUnits(
                     snapshot,
-                    layerAdapterFactory,
+                    this.rootStore.layerAdapterFactory,
                 );
 
                 // Remove units no longer desired
@@ -98,8 +96,12 @@ export class LayerManager {
                     const current = this.renderUnits.get(id);
                     if (
                         current &&
-                        (this._configsDiffer(current.config, unit.config) ||
-                            current.sourceUrl !== unit.sourceUrl)
+                        (this._configsDiffer(
+                            current.descriptor.config,
+                            unit.descriptor.config,
+                        ) ||
+                            current.descriptor.sourceUrl !==
+                                unit.descriptor.sourceUrl)
                     ) {
                         this._updateExistingUnit(current, unit);
                     }
@@ -118,12 +120,7 @@ export class LayerManager {
         if (!this.map || !this.isMapLoaded) return;
 
         try {
-            unit.adapter.addToMap(
-                unit.id,
-                unit.config,
-                unit.sourceUrl,
-                this.map,
-            );
+            unit.adapter.addToMap(unit.id, unit.descriptor, this.map);
             this.renderUnits.set(unit.id, unit);
         } catch (error) {
             logger.error(`Failed to add render unit "${unit.id}":`, error);
@@ -205,7 +202,7 @@ export class LayerManager {
         configA: LayerConfig,
         configB: LayerConfig,
     ): boolean {
-        return JSON.stringify(configA) !== JSON.stringify(configB);
+        return !comparer.structural(configA, configB);
     }
 
     // ==================== Reactive setup ====================

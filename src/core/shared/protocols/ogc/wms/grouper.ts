@@ -12,8 +12,9 @@ import type {
     RenderUnit,
     LayerAdapter,
     SnapshotItem,
+    RenderDescriptor,
 } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles, makeRenderDescriptor } from "@core/framework/types";
 import { parseWmsUrl, buildWmsTileUrl, getWmsLayerName } from "./url";
 import { generateGroupId, keysMatch, getWmsGroupKey } from "./grouping";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
@@ -23,7 +24,7 @@ import type { LayerAdapterFactory } from "@core/domain/adapters";
  */
 interface WmsGroupInput {
     id: string;
-    config: RasterLayerConfig;
+    descriptor: RenderDescriptor;
 }
 
 const WMS_TYPE = "wms" as const;
@@ -48,7 +49,7 @@ export function groupVisibleWmsNodes(
     let currentKey: WmsGroupKey | null = null;
 
     for (const item of items) {
-        const key = getWmsGroupKey(item.config);
+        const key = getWmsGroupKey(item.descriptor.config as RasterLayerConfig);
 
         if (shouldFlush(currentGroup, currentKey, key, maxPerGroup)) {
             groups.push(buildGroup(currentGroup, currentKey!));
@@ -94,7 +95,7 @@ export function applyWmsGrouping(
     if (wmsInputs.length === 0) return;
 
     const groups = groupVisibleWmsNodes(wmsInputs);
-    const rasterAdapter = adapterFactory.get(LayerRole.RASTER);
+    const rasterAdapter = adapterFactory.get(LayerRoles.RASTER);
 
     for (const input of wmsInputs) {
         result.delete(input.id);
@@ -109,14 +110,14 @@ export function applyWmsGrouping(
 function collectWmsInputs(snapshot: SnapshotItem[]): WmsGroupInput[] {
     const inputs: WmsGroupInput[] = [];
     for (const item of snapshot) {
-        if (!item.visible || !item.config) continue;
+        if (!item.visible || !item.descriptor) continue;
         if (
-            item.config.role === LayerRole.RASTER &&
-            (item.config as RasterLayerConfig).type === WMS_TYPE
+            item.descriptor.config.role === LayerRoles.RASTER &&
+            (item.descriptor.config as RasterLayerConfig).type === WMS_TYPE
         ) {
             inputs.push({
                 id: item.id,
-                config: item.config as RasterLayerConfig,
+                descriptor: item.descriptor,
             });
         }
     }
@@ -137,8 +138,9 @@ function buildGroupRenderUnit(
     for (const nid of reversedNodeIds) {
         const input = wmsInputs.find((i) => i.id === nid);
         if (!input) continue;
-        layerNames.push(getWmsLayerName(input.config.url, input.config.layers));
-        styleNames.push(parseWmsUrl(input.config.url).styles);
+        const cfg = input.descriptor.config as RasterLayerConfig;
+        layerNames.push(getWmsLayerName(cfg.url, cfg.layers));
+        styleNames.push(parseWmsUrl(cfg.url).styles);
     }
 
     const tileUrl = buildWmsTileUrl(group.baseUrl, layerNames.join(","), {
@@ -149,9 +151,13 @@ function buildGroupRenderUnit(
 
     const firstInput = wmsInputs.find((i) => i.id === group.nodeIds[0]);
     const groupConfig: RasterLayerConfig = firstInput
-        ? { ...firstInput.config, opacity: group.opacity }
+        ? {
+              ...(firstInput.descriptor.config as RasterLayerConfig),
+              role: LayerRoles.RASTER,
+              opacity: group.opacity,
+          }
         : {
-              role: LayerRole.RASTER,
+              role: LayerRoles.RASTER,
               type: WMS_TYPE,
               url: group.baseUrl,
               opacity: group.opacity,
@@ -161,8 +167,11 @@ function buildGroupRenderUnit(
         id: group.groupId,
         nodeIds: group.nodeIds,
         adapter: rasterAdapter,
-        config: groupConfig,
-        sourceUrl: tileUrl,
+        descriptor: makeRenderDescriptor(
+            LayerRoles.RASTER,
+            tileUrl,
+            groupConfig,
+        ),
     };
 }
 

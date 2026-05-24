@@ -1,8 +1,12 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/framework/store";
-import { isLayerNode, isPointCloudConfig, ColorScheme } from "@core/framework/types";
-import type { PointCloudLayerConfig } from "@core/framework/types";
+import {
+    isLayerNode,
+    isPointCloudConfig,
+    ColorScheme,
+    LayerRoles,
+} from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 import { POINT_COLOR_SCHEME_SELECTOR_ID } from "./Tool";
 import styles from "./Panel.module.css";
@@ -24,7 +28,7 @@ export const PointColorSchemeComponent: (
     }
 
     const displayRole = node.roles.display;
-    if (!isPointCloudConfig(displayRole.layerConfig)) {
+    if (!isPointCloudConfig(displayRole.render.config)) {
         logger.warn(
             `PointColorSchemeSelector: config for node ${nodeId} is not a point cloud config`,
         );
@@ -32,15 +36,18 @@ export const PointColorSchemeComponent: (
     }
 
     const currentScheme =
-        displayRole.layerConfig.colorScheme ?? ColorScheme.RGB;
+        displayRole.render.config.colorScheme ?? ColorScheme.RGB;
 
     const handleSchemeChange = (
         event: React.ChangeEvent<HTMLSelectElement>,
     ) => {
         const newScheme = event.target.value as ColorScheme;
-        rootStore.treeStore.updateLayerConfig<PointCloudLayerConfig>(nodeId, {
-            colorScheme: newScheme,
-        });
+        rootStore.treeStore.updateLayerConfig<typeof LayerRoles.POINT_CLOUD>(
+            nodeId,
+            {
+                colorScheme: newScheme,
+            },
+        );
         logger.debug(
             `Changed color scheme for layer ${nodeId} to ${newScheme}`,
         );

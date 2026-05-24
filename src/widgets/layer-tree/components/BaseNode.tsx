@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Icon, type IconName } from "@core/ui/components";
 import type { TreeNode, GroupNode } from "@core/framework/types";
 import { isGroupNode, isLayerNode } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles, type LayerRole } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 import { useRootStore } from "@core/framework/store";
 import { LAYER_TREE_ID } from "..";
@@ -131,10 +131,10 @@ function MoreButton({
 }
 
 const LAYER_ROLE_ICON: Record<LayerRole, IconName> = {
-    [LayerRole.RASTER]: "raster",
-    [LayerRole.VECTOR]: "vector",
-    [LayerRole.POINT_CLOUD]: "point-cloud",
-    [LayerRole.VECTOR3D]: "vector", // Reuse vector icon for 3D vectors
+    [LayerRoles.RASTER]: "raster",
+    [LayerRoles.VECTOR]: "vector",
+    [LayerRoles.POINT_CLOUD]: "point-cloud",
+    [LayerRoles.VECTOR3D]: "vector", // Reuse vector icon for 3D vectors
 };
 
 interface NodeFlags {
@@ -154,9 +154,9 @@ interface NodeFlags {
 function getLayerTypeIconForNode(node: TreeNode): IconName {
     if (isLayerNode(node)) {
         const displayRole = node.roles.display;
-        if (displayRole.layerConfig) {
+        if (displayRole.render.config) {
             return (
-                LAYER_ROLE_ICON[displayRole.layerConfig.role as LayerRole] ??
+                LAYER_ROLE_ICON[displayRole.render.config.role as LayerRole] ??
                 "raster"
             );
         }
