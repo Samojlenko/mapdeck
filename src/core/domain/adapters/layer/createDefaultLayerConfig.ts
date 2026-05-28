@@ -1,59 +1,43 @@
 /**
- * Registry-based factory for creating default layer configurations by role.
+ * Registry for LayerConfig factories by role.
  *
- * Instead of a switch on LayerRole (which doesn't work with branded strings
- * and requires core edits for new roles), modules register their config
- * factories via `registerDefaultConfig()`.
+ * Modules call `register()` to declare their default config; consumers
+ * call `create()` to obtain a fresh config for a given role. The
+ * registry is stored on RootStore so there is no module-level mutable state.
  */
 import {
     type LayerConfig,
-    type RasterLayerConfig,
-    type VectorLayerConfig,
-    type PointCloudLayerConfig,
-    type Vector3DLayerConfig,
     LayerRoles,
     type LayerRole,
     ColorScheme,
 } from "@core/framework/types";
 
 type ConfigFactory = () => LayerConfig;
-const registry = new Map<string, ConfigFactory>();
 
-/**
- * Register a factory that produces a default LayerConfig for the given role.
- * Core calls this during bootstrap for built-in roles; modules call it in
- * their `Module.register()`.
- */
-export function registerDefaultConfig(
-    role: LayerRole,
-    factory: ConfigFactory,
-): void {
-    if (registry.has(role)) {
-        throw new Error(
-            `Default config for role "${role}" is already registered`,
-        );
+export class LayerConfigRegistry {
+    private registry = new Map<LayerRole, ConfigFactory>();
+
+    register(role: LayerRole, factory: ConfigFactory): void {
+        this.registry.set(role, factory);
+    }
+
+    create(role: LayerRole): LayerConfig {
+        const factory = this.registry.get(role);
+        if (!factory) {
+            throw new Error(`No default config registered for role: "${role}"`);
+        }
+        return factory();
     }
     registry.set(role, factory);
 }
 
 /**
- * Create a default LayerConfig for the specified role.
- *
- * @throws Error if no factory is registered for the role
+ * Register the default config factories for all built-in roles.
  */
-export function createDefaultConfig(role: LayerRole): LayerConfig {
-    const factory = registry.get(role);
-    if (!factory) {
-        throw new Error(`No default config registered for role: "${role}"`);
-    }
-    return factory();
-}
-
-// ── Register built-in roles ─────────────────────────────────────────────
-
-registerDefaultConfig(
-    LayerRoles.RASTER,
-    (): RasterLayerConfig => ({
+export function registerDefaultLayerConfigs(
+    registry: LayerConfigRegistry,
+): void {
+    registry.register(LayerRoles.RASTER, () => ({
         role: LayerRoles.RASTER,
         type: "xyz",
         url: "",
@@ -68,12 +52,9 @@ registerDefaultConfig(
             "raster-hue-rotate": 0,
             "raster-resampling": "linear",
         },
-    }),
-);
+    }));
 
-registerDefaultConfig(
-    LayerRoles.VECTOR,
-    (): VectorLayerConfig => ({
+    registry.register(LayerRoles.VECTOR, () => ({
         role: LayerRoles.VECTOR,
         layerType: "fill",
         opacity: 1.0,
@@ -82,12 +63,9 @@ registerDefaultConfig(
             "fill-color": "#3f51b5",
             "fill-opacity": 0.7,
         },
-    }),
-);
+    }));
 
-registerDefaultConfig(
-    LayerRoles.POINT_CLOUD,
-    (): PointCloudLayerConfig => ({
+    registry.register(LayerRoles.POINT_CLOUD, () => ({
         role: LayerRoles.POINT_CLOUD,
         opacity: 1.0,
         visible: true,
@@ -96,17 +74,14 @@ registerDefaultConfig(
         intensityMin: 0,
         intensityMax: 1,
         filterByClassification: false,
-    }),
-);
+    }));
 
-registerDefaultConfig(
-    LayerRoles.VECTOR3D,
-    (): Vector3DLayerConfig => ({
+    registry.register(LayerRoles.VECTOR3D, () => ({
         role: LayerRoles.VECTOR3D,
         url: "",
         opacity: 1.0,
         visible: true,
         lineWidth: 2,
         lineColor: "#3f51b5",
-    }),
-);
+    }));
+}

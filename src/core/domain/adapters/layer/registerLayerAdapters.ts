@@ -1,4 +1,3 @@
-import { layerAdapterFactory } from "./LayerAdapterFactory";
 import {
     type LayerAdapter,
     LayerRoles,
@@ -6,6 +5,7 @@ import {
 } from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
 import { logger } from "@core/shared/diagnostics/logger";
+import { registerDefaultLayerConfigs } from "./createDefaultLayerConfig";
 import { PointCloudAdapter } from "./impl/PointCloudAdapter";
 import { RasterAdapter } from "./impl/RasterAdapter";
 import { Vector3DAdapter } from "./impl/Vector3DAdapter";
@@ -19,12 +19,13 @@ const ADAPTERS: [LayerRole, LayerAdapter][] = [
 ];
 
 export async function registerLayerAdapters(
-    rootStore?: RootStore,
+    rootStore: RootStore,
 ): Promise<void> {
-    const target = rootStore?.layerAdapterFactory ?? layerAdapterFactory;
     try {
+        registerDefaultLayerConfigs(rootStore.layerConfigRegistry);
+
         for (const [role, adapter] of ADAPTERS) {
-            await target.register(role, adapter);
+            await rootStore.layerAdapterFactory.register(role, adapter);
         }
     } catch (error) {
         logger.error("Failed to register layer adapters:", error);

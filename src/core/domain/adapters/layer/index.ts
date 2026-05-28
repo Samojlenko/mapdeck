@@ -1,7 +1,4 @@
-export {
-    LayerAdapterFactory,
-    layerAdapterFactory,
-} from "./LayerAdapterFactory";
+export { LayerAdapterFactory } from "./LayerAdapterFactory";
 export { registerLayerAdapters } from "./registerLayerAdapters";
 
 export { RasterAdapter } from "./impl/RasterAdapter";
@@ -10,6 +7,6 @@ export { Vector3DAdapter } from "./impl/Vector3DAdapter";
 export { PointCloudAdapter } from "./impl/PointCloudAdapter";
 
 export {
-    createDefaultConfig,
-    registerDefaultConfig,
+    LayerConfigRegistry,
+    registerDefaultLayerConfigs,
 } from "./createDefaultLayerConfig";

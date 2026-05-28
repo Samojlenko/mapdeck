@@ -1,16 +1,7 @@
 // Adapter factories for the modular architecture
-export {
-    LayerAdapterFactory,
-    layerAdapterFactory,
-} from "./layer/LayerAdapterFactory";
-export {
-    SourceAdapterFactory,
-    sourceAdapterFactory,
-} from "./source/SourceAdapterFactory";
-export {
-    AttributeAdapterFactory,
-    attributeAdapterFactory,
-} from "./attribute/AttributeAdapterFactory";
+export { LayerAdapterFactory } from "./layer/LayerAdapterFactory";
+export { SourceAdapterFactory } from "./source/SourceAdapterFactory";
+export { AttributeAdapterFactory } from "./attribute/AttributeAdapterFactory";
 
 // Layer adapter implementations
 export { RasterAdapter } from "./layer/impl/RasterAdapter";
@@ -20,8 +11,8 @@ export { PointCloudAdapter } from "./layer/impl/PointCloudAdapter";
 // Layer adapter registration
 export { registerLayerAdapters } from "./layer/registerLayerAdapters";
 export {
-    createDefaultConfig,
-    registerDefaultConfig,
+    LayerConfigRegistry,
+    registerDefaultLayerConfigs,
 } from "./layer/createDefaultLayerConfig";
 
 // Attribute adapter registration

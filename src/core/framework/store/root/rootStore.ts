@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, flow } from "mobx";
 import { LayerTreeStore } from "../layer/LayerTreeStore";
 import { LayerVisibilityStore } from "../layer/LayerVisibilityStore";
 import { AttributeDataStore } from "../layer/AttributeDataStore";
@@ -13,14 +13,23 @@ import { coreTranslations } from "@core/framework/i18n";
 import { LayerAdapterFactory } from "@core/domain/adapters/layer/LayerAdapterFactory";
 import { AttributeAdapterFactory } from "@core/domain/adapters/attribute/AttributeAdapterFactory";
 import { SourceAdapterFactory } from "@core/domain/adapters/source/SourceAdapterFactory";
-import { DeckOverlayManager } from "@core/domain/overlay";
+import { LayerConfigRegistry } from "@core/domain/adapters";
+import { logger } from "@core/shared/diagnostics/logger";
+import { registerBuiltInWidgets } from "@widgets/registerWidgets";
+import {
+    registerLayerAdapters,
+    registerAttributeAdapters,
+} from "@core/domain/adapters";
+import { registerModules } from "@modules/registerModules";
+import { registerTools } from "@layer-tools/registerTools";
+import { registerMapTools } from "@map-tools/registerMapTools";
 
 export class RootStore {
     // Adapter factories — available before any store
     readonly layerAdapterFactory: LayerAdapterFactory;
     readonly attributeAdapterFactory: AttributeAdapterFactory;
     readonly sourceAdapterFactory: SourceAdapterFactory;
-    readonly overlayManager: DeckOverlayManager;
+    readonly layerConfigRegistry: LayerConfigRegistry;
 
     readonly treeStore: LayerTreeStore;
     readonly visibilityStore: LayerVisibilityStore;
@@ -44,7 +53,7 @@ export class RootStore {
         this.layerAdapterFactory = new LayerAdapterFactory();
         this.attributeAdapterFactory = new AttributeAdapterFactory();
         this.sourceAdapterFactory = new SourceAdapterFactory();
-        this.overlayManager = new DeckOverlayManager();
+        this.layerConfigRegistry = new LayerConfigRegistry();
 
         // LocaleStore must be created early so other stores can use it
         this.localeStore = new LocaleStore();
@@ -63,6 +72,23 @@ export class RootStore {
 
         makeAutoObservable(this);
     }
+
+    initialize = flow(function* (this: RootStore) {
+        this.clearInitError();
+        try {
+            yield registerLayerAdapters(this);
+            yield registerAttributeAdapters(this);
+            yield registerBuiltInWidgets(this);
+            yield registerTools(this);
+            yield registerMapTools(this);
+            yield registerModules(this);
+            yield this.treeStore.fetchLayerTree();
+            this.markInitialized();
+        } catch (error) {
+            logger.error("Failed to initialize app:", error);
+            this.setInitError(error);
+        }
+    });
 
     markInitialized(): void {
         this.isInitialized = true;
