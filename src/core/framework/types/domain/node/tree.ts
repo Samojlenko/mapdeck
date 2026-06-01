@@ -26,8 +26,9 @@ export interface TreeNodeBase {
     // ID-based navigation
     parentId: string | null;
 
-    // Single extent attribute for zoom functionality
-    bbox: Bbox;
+    // Single extent attribute for zoom functionality.
+    // null when the node has no spatial extent (zoom button disabled).
+    bbox: Bbox | null;
 
     /**
      * Structured roles: display, attribute, reports.
@@ -45,6 +46,9 @@ export interface GroupNode extends TreeNodeBase {
 
     /** Children node IDs. Only group nodes can have children. */
     childrenIds: IObservableArray<string>;
+
+    /** Known or estimated number of children (0 if unknown). */
+    childrenCount: number;
 
     isExtended: boolean;
 }

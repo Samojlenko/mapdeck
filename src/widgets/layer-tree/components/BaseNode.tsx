@@ -134,7 +134,7 @@ const LAYER_ROLE_ICON: Record<LayerRole, IconName> = {
     [LayerRoles.RASTER]: "raster",
     [LayerRoles.VECTOR]: "vector",
     [LayerRoles.POINT_CLOUD]: "point-cloud",
-    [LayerRoles.VECTOR3D]: "vector", // Reuse vector icon for 3D vectors
+    [LayerRoles.GEOJSON]: "vector", // Reuse vector icon for GeoJSON
 };
 
 interface NodeFlags {
@@ -154,6 +154,7 @@ interface NodeFlags {
 function getLayerTypeIconForNode(node: TreeNode): IconName {
     if (isLayerNode(node)) {
         const displayRole = node.roles.display;
+        if (!displayRole) return "layers";
         if (displayRole.render.config) {
             return (
                 LAYER_ROLE_ICON[displayRole.render.config.role as LayerRole] ??
@@ -307,6 +308,15 @@ const BaseNode: (props: BaseNodeProps) => React.ReactNode = observer(
             showExpandArrow,
             onToggleExpansion,
         );
+
+        // Placeholder nodes (no display role) get no action buttons
+        const isPlaceholder = isLayerNode(node) && !node.roles.display;
+        if (isPlaceholder) {
+            flags.hasEyeIcon = false;
+            flags.hasZoom = false;
+            flags.hasMore = false;
+        }
+
         const handlers = createClickHandlers(node, flags, {
             onToggleExpansion,
             onToggleVisibility,

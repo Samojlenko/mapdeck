@@ -41,6 +41,9 @@ export class LayerTreeStore {
     private _searchAbortController: AbortController | null = null;
     isSearchLoading: boolean = false;
 
+    /** Set of node IDs currently loading their children. */
+    loadingNodeIds: Set<string> = observable.set<string>();
+
     private _adapter: SourceAdapter | null = null;
     private _urlReactionDisposer?: () => void;
 
@@ -267,6 +270,9 @@ export class LayerTreeStore {
         if (!node) return;
 
         this._setLoadingState(true);
+        runInAction(() => {
+            this.loadingNodeIds.add(nodeId);
+        });
 
         try {
             const childTreeNodes = await this._adapter.fetchChildren(node);
@@ -281,6 +287,7 @@ export class LayerTreeStore {
                             this._removeNodeSubtree(oldChildId);
                         }
                     }
+                    parent.childrenCount = childTreeNodes.length;
                 }
                 this.buildTreeFromNodes(childTreeNodes, nodeId);
             });
@@ -295,6 +302,10 @@ export class LayerTreeStore {
                 }
             });
             this._handleError(error, `Failed to expand group ${nodeId}`);
+        } finally {
+            runInAction(() => {
+                this.loadingNodeIds.delete(nodeId);
+            });
         }
     }
 
@@ -308,6 +319,7 @@ export class LayerTreeStore {
             return;
         }
         const { display } = node.roles;
+        if (!display) return;
         display.render = updateDescriptorConfig(
             display.render as RenderDescriptor<TRole>,
             updates,
@@ -435,7 +447,7 @@ export class LayerTreeStore {
                 return {
                     id: node.id,
                     visible: node.isVisible,
-                    descriptor: display.render ? toJS(display.render) : null,
+                    descriptor: display ? toJS(display.render) : null,
                 };
             });
         },

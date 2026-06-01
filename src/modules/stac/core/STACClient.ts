@@ -7,11 +7,12 @@ import { logger } from "@core/shared/diagnostics/logger";
 import type { STACConfig } from "./STACConfig";
 import type {
     STACCatalog,
+    STACCollection,
+    STACCollectionsResponse,
     STACEntity,
     STACItem,
-    STACFeatureCollection,
 } from "../types";
-import { isSTACCatalog, isSTACItem, isSTACFeatureCollection } from "../types";
+import { isSTACCatalog, isSTACCollection } from "../types";
 
 export class STACClient {
     constructor(private readonly config: STACConfig) {}
@@ -39,67 +40,85 @@ export class STACClient {
     async fetchCatalog(
         catalogUrl: string,
         baseUrlOverride?: string,
-    ): Promise<STACCatalog> {
-        logger.info(`Fetching STAC catalog from: ${catalogUrl}`);
+    ): Promise<STACCatalog | STACCollection> {
+        logger.debug(`Fetching STAC catalog from: ${catalogUrl}`);
         const entity = await this.fetchEntity(catalogUrl, baseUrlOverride);
 
-        if (!isSTACCatalog(entity)) {
+        if (!isSTACCatalog(entity) && !isSTACCollection(entity)) {
             throw new Error(
-                `Expected STAC Catalog but got type: ${entity.type}`,
+                `Expected STAC Catalog or Collection but got type: ${entity.type}`,
             );
         }
 
-        logger.info(
-            `Loaded STAC catalog: ${entity.id} (${entity.title || "untitled"})`,
+        const label = isSTACCollection(entity) ? "Collection" : "Catalog";
+        logger.debug(
+            `Loaded STAC ${label}: ${entity.id} (${entity.title || "untitled"})`,
         );
         return entity;
     }
 
-    async fetchItems(
-        itemLink: string,
-        baseUrlOverride?: string,
-    ): Promise<STACItem[]> {
-        const entity = await this.fetchEntity(itemLink, baseUrlOverride);
-
-        if (isSTACItem(entity)) {
-            return [entity];
-        }
-        if (isSTACFeatureCollection(entity)) {
-            return entity.features;
-        }
-
-        throw new Error(
-            `Expected STAC Item or FeatureCollection but got type: ${entity.type}`,
-        );
-    }
-
     /**
-     * Fetch items from STAC API /items endpoint.
-     * This endpoint returns a FeatureCollection that may lack root-level stac_version,
+     * Fetch all collections from a STAC API /collections endpoint.
+     * This endpoint returns a Collections response (not a single entity),
      * so we bypass fetchEntity validation.
      */
-    async fetchItemsFromCollection(
-        itemsUrl: string,
+    async fetchCollections(
+        collectionsUrl: string,
         baseUrlOverride?: string,
-    ): Promise<STACItem[]> {
-        logger.info(`Fetching STAC items from: ${itemsUrl}`);
+    ): Promise<STACCollection[]> {
+        logger.debug(`Fetching STAC collections from: ${collectionsUrl}`);
 
-        const data: unknown = await this.request(itemsUrl, baseUrlOverride);
+        const data: unknown = await this.request(
+            collectionsUrl,
+            baseUrlOverride,
+        );
 
         if (
             !data ||
             typeof data !== "object" ||
-            !("features" in data) ||
-            !Array.isArray((data as Record<string, unknown>).features)
+            !("collections" in data) ||
+            !Array.isArray((data as Record<string, unknown>).collections)
         ) {
             throw new Error(
-                "Response does not appear to be a valid STAC API items response",
+                "Response does not appear to be a valid STAC collections response",
             );
         }
 
-        const fc = data as STACFeatureCollection;
-        logger.info(`Loaded ${fc.features.length} items from: ${itemsUrl}`);
-        return fc.features;
+        const response = data as STACCollectionsResponse;
+        logger.debug(
+            `Loaded ${response.collections.length} collections from: ${collectionsUrl}`,
+        );
+        return response.collections as STACCollection[];
+    }
+
+    /**
+     * Fetches all items from a paginated STAC API endpoint.
+     * Follows "next" links until maxPages is reached or no further pages exist.
+     */
+    async fetchItemsAll(
+        url: string,
+        baseUrlOverride?: string,
+    ): Promise<STACItem[]> {
+        const maxPages = this.config.maxPages ?? 10;
+        const allItems: STACItem[] = [];
+        let nextUrl: string | null = url;
+        let page = 0;
+
+        while (nextUrl && page < maxPages) {
+            const data = await this.request(nextUrl, baseUrlOverride);
+            const { items, nextHref } = parseItemsResponse(data, nextUrl);
+            allItems.push(...items);
+            nextUrl = nextHref;
+            page++;
+        }
+
+        if (nextUrl) {
+            logger.warn(
+                `Stopped paginating after ${maxPages} pages for ${url}`,
+            );
+        }
+
+        return allItems;
     }
 
     // ---- private ----
@@ -148,4 +167,41 @@ export class STACClient {
             return url;
         }
     }
+}
+
+/**
+ * Parses a STAC response into items and the next page link.
+ * Handles both single items and FeatureCollections with pagination links.
+ */
+function parseItemsResponse(
+    data: unknown,
+    sourceUrl: string,
+): { items: STACItem[]; nextHref: string | null } {
+    if (!data || typeof data !== "object") {
+        throw new Error(`Invalid response from ${sourceUrl}`);
+    }
+
+    const record = data as Record<string, unknown>;
+
+    // Single Item
+    if (record.type === "Feature") {
+        return { items: [data as STACItem], nextHref: null };
+    }
+
+    // FeatureCollection
+    if ("features" in record && Array.isArray(record.features)) {
+        const fc = data as {
+            features: STACItem[];
+            links?: Array<{ rel: string; href: string }>;
+        };
+        const nextLink = fc.links?.find((l) => l.rel === "next");
+        return {
+            items: fc.features,
+            nextHref: nextLink?.href ?? null,
+        };
+    }
+
+    throw new Error(
+        `Response from ${sourceUrl} is not a valid STAC Item or FeatureCollection`,
+    );
 }

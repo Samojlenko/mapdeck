@@ -7,12 +7,12 @@ import {
     type GroupNode,
     type NodeRoles,
     type LayerNodeRoles,
-    type PointCloudLayerConfig,
 } from "@core/framework/types";
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
 import { mapAssetsToNodeRoles } from "./RoleMapper";
 import type { LayerConfigRegistry } from "@core/domain/adapters";
+import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { Bbox, flattenTo2D } from "@core/shared/geo";
 import type { STACCache } from "../core/STACCache";
 
@@ -20,6 +20,7 @@ export class STACEntityMapper {
     constructor(
         private cache: STACCache,
         private layerConfigRegistry: LayerConfigRegistry,
+        private roleRegistry: RoleResolverRegistry,
     ) {}
 
     mapCollectionToGroupNode(
@@ -31,8 +32,19 @@ export class STACEntityMapper {
         );
 
         const roles: NodeRoles = collection.assets
-            ? mapAssetsToNodeRoles(collection.assets, this.layerConfigRegistry)
+            ? mapAssetsToNodeRoles(
+                  collection.assets,
+                  this.roleRegistry,
+                  this.layerConfigRegistry,
+              )
             : { reports: [] };
+
+        // Estimate the number of direct children.
+        // Count directly linked children (static STAC).
+        // 0 means unknown — the component will decide how to handle it.
+        const childLinkCount = collection.links.filter(
+            (l) => l.rel === "child" || l.rel === "item",
+        ).length;
 
         return {
             id: collection.id,
@@ -42,10 +54,10 @@ export class STACEntityMapper {
             icon: "",
             metadata: {
                 stacEntityRef: `Collection:${collection.id}`,
-                stacEntity: JSON.stringify(collection),
             },
             parentId: null,
             childrenIds,
+            childrenCount: childLinkCount,
             bbox: flattenedBbox,
             roles,
             isExtended: false,
@@ -56,26 +68,24 @@ export class STACEntityMapper {
     mapItemToLayerNode(item: STACItem): TreeNode | null {
         const roles = mapAssetsToNodeRoles(
             item.assets,
+            this.roleRegistry,
             this.layerConfigRegistry,
             item.properties,
+            item.bbox,
         );
 
+        const hasBbox = item.bbox && item.bbox.length >= 4;
+
         if (roles.reports.length === 0 && !roles.display && !roles.attribute) {
-            logger.warn(`Item ${item.id} has no recognized assets, skipping`);
-            return null;
+            return this.createPlaceholderOrSkip(item, hasBbox, "no assets");
         }
 
         const layerRoles = this.resolveRoleConflicts(roles);
         if (!layerRoles) {
-            logger.warn(
-                `Item ${item.id} has no display roles, skipping as layer`,
-            );
-            return null;
+            return this.createPlaceholderOrSkip(item, hasBbox, "no display");
         }
 
-        this.augmentPointCloudRoles(layerRoles, item);
-
-        const flattenedBbox = flattenTo2D(new Bbox(item.bbox));
+        const flattenedBbox = hasBbox ? flattenTo2D(new Bbox(item.bbox)) : null;
 
         const layerNode: LayerNode = {
             id: item.id,
@@ -85,7 +95,6 @@ export class STACEntityMapper {
             icon: "",
             metadata: {
                 stacEntityRef: `Feature:${item.id}`,
-                stacEntity: JSON.stringify(item),
             },
             parentId: null,
             bbox: flattenedBbox,
@@ -98,32 +107,14 @@ export class STACEntityMapper {
 
     getSTACEntityFromNode(node: TreeNode): STACEntity | null {
         const ref = node.metadata?.stacEntityRef as string | undefined;
-        if (ref) {
-            const colonIndex = ref.indexOf(":");
-            if (colonIndex !== -1) {
-                const type = ref.slice(0, colonIndex);
-                const id = ref.slice(colonIndex + 1);
-                const entity = this.cache.get<STACEntity>(type, id);
-                if (entity) return entity;
-            }
-        }
+        if (!ref) return null;
 
-        // Fallback: parse from serialized metadata on cache miss
-        const stacEntityString = node.metadata?.stacEntity as
-            | string
-            | undefined;
-        if (stacEntityString) {
-            try {
-                return JSON.parse(stacEntityString) as STACEntity;
-            } catch (error) {
-                logger.warn(
-                    `Failed to parse stacEntity from node ${node.id}:`,
-                    error,
-                );
-            }
-        }
+        const colonIndex = ref.indexOf(":");
+        if (colonIndex === -1) return null;
 
-        return null;
+        const type = ref.slice(0, colonIndex);
+        const id = ref.slice(colonIndex + 1);
+        return this.cache.get<STACEntity>(type, id) ?? null;
     }
 
     getSTACCollectionFromNode(node: TreeNode): STACCollection | null {
@@ -152,27 +143,40 @@ export class STACEntityMapper {
     }
 
     /**
-     * Augment point cloud layer configs with bounds and coordinate origin.
+     * Create a placeholder layer node for items that have spatial extent
+     * but no renderable assets. The node has no display role — it appears
+     * in the tree with the item title and bbox, but no map rendering or
+     * action buttons.
      */
-    private augmentPointCloudRoles(
-        roles: LayerNodeRoles,
+    private createPlaceholderOrSkip(
         item: STACItem,
-    ): void {
-        const displayRole = roles.display;
-        if (
-            !displayRole.render.config ||
-            displayRole.render.config.role !== "point-cloud"
-        ) {
-            return;
+        hasBbox: boolean,
+        reason: string,
+    ): TreeNode | null {
+        if (!hasBbox) {
+            logger.debug(`Item ${item.id} has no bbox and ${reason}, skipping`);
+            return null;
         }
+        const flattenedBbox =
+            item.bbox && item.bbox.length >= 4
+                ? flattenTo2D(new Bbox(item.bbox))
+                : null;
 
-        const bbox = new Bbox(item.bbox);
-        const pcConfig = displayRole.render.config as PointCloudLayerConfig;
+        const layerNode: LayerNode = {
+            id: item.id,
+            type: LayerTreeNodeTypes.Layer,
+            title: item.properties.title || item.id,
+            description: item.properties.description || "",
+            icon: "",
+            metadata: {
+                stacEntityRef: `Feature:${item.id}`,
+            },
+            parentId: null,
+            bbox: flattenedBbox,
+            roles: { reports: [] },
+            isVisible: false,
+        };
 
-        pcConfig.coordinateOrigin = bbox.center;
-
-        if (bbox.is3D) {
-            pcConfig.bounds = bbox.bounds3D!;
-        }
+        return layerNode;
     }
 }

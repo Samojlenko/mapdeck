@@ -3,14 +3,13 @@ import { logger } from "@core/shared/diagnostics/logger";
 import type { FeatureProvider, Feature, CollectParams } from "../types";
 import {
     isVectorConfig,
-    isRasterConfig,
-    isVector3DConfig,
+    isGeoJsonConfig,
     type LayerNode,
 } from "@core/framework/types";
 
 /**
  * Feature provider for vector layers rendered natively by the base map.
- * Uses map.queryRenderedFeatures to query vector, vector3d, and non-WMS raster layers.
+ * Uses map.queryRenderedFeatures to query vector and non-WMS raster layers.
  */
 export class VectorFeatureProvider implements FeatureProvider {
     async collect(params: CollectParams): Promise<Feature[]> {
@@ -22,9 +21,10 @@ export class VectorFeatureProvider implements FeatureProvider {
         }
 
         try {
-            const features = map.queryRenderedFeatures([screenX, screenY], {
-                layers: nativeLayerIds,
-            });
+            const allFeatures = map.queryRenderedFeatures([screenX, screenY]);
+            const features = allFeatures.filter((f) =>
+                nativeLayerIds.includes(f.layer.id),
+            );
 
             if (features.length === 0) {
                 return [];
@@ -46,13 +46,10 @@ export class VectorFeatureProvider implements FeatureProvider {
     private getNativeLayerIds(visibleLayers: LayerNode[]): string[] {
         const ids: string[] = [];
         for (const node of visibleLayers) {
+            if (!node.roles.display) continue;
             const config = node.roles.display.render.config;
 
-            if (
-                isVectorConfig(config) ||
-                isVector3DConfig(config) ||
-                (isRasterConfig(config) && config.type !== "wms")
-            ) {
+            if (isVectorConfig(config) || isGeoJsonConfig(config)) {
                 ids.push(node.id);
             }
         }
@@ -85,19 +82,22 @@ export class VectorFeatureProvider implements FeatureProvider {
 
         const result: Feature[] = [];
         for (const [layerId, data] of featuresByLayer) {
-            const firstFeature = data.features[0];
-            if (!firstFeature) continue;
+            for (let i = 0; i < data.features.length; i++) {
+                const feature = data.features[i];
+                if (!feature) continue;
 
-            const attributes = this.buildAttributes(firstFeature);
+                const attributes = this.buildAttributes(feature);
+                const featureId = `${layerId}_${feature.id ?? i}`;
 
-            result.push({
-                id: `${layerId}_${firstFeature.id ?? 0}`,
-                layerId,
-                layerName: data.layerName,
-                sourceType: "vector",
-                attributes,
-                groupId: layerId,
-            });
+                result.push({
+                    id: featureId,
+                    layerId,
+                    layerName: data.layerName,
+                    sourceType: "vector",
+                    attributes,
+                    groupId: layerId,
+                });
+            }
         }
 
         return result;
