@@ -1,7 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/framework/store";
-import { isLayerNode, LayerRoles } from "@core/framework/types";
+import { isLayerNode } from "@core/framework/types";
 import type { TreeNode, VectorLayerConfig } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 import { ColorPicker } from "@core/ui/composites/color-picker/ColorPicker";
@@ -34,12 +34,6 @@ function validateNode(
         string,
         unknown
     >;
-    const role = config.role;
-    if (role !== "vector" && role !== "geojson") {
-        logger.warn(`VectorColorPicker: node ${nodeId} has unsupported config`);
-        return null;
-    }
-
     const paint = (config.paint as Record<string, unknown>) ?? {};
     const opacity = (paint["fill-opacity"] as number) ?? 1.0;
 
@@ -59,24 +53,20 @@ export const VectorColorPickerComponent: (
 
     const updatePaint = (paintUpdates: Record<string, unknown>): void => {
         const merged = { ...paint, ...paintUpdates };
-        rootStore.treeStore.updateLayerConfig<typeof LayerRoles.VECTOR>(
-            nodeId,
-            { paint: merged } as Partial<VectorLayerConfig>,
-        );
+        rootStore.treeStore.updateLayerConfig(nodeId, {
+            paint: merged,
+        } as Partial<VectorLayerConfig>);
     };
 
     const updateOpacity = (newOpacity: number): void => {
-        rootStore.treeStore.updateLayerConfig<typeof LayerRoles.VECTOR>(
-            nodeId,
-            {
-                paint: {
-                    ...paint,
-                    "fill-opacity": newOpacity,
-                    "line-opacity": newOpacity,
-                    "circle-opacity": newOpacity,
-                },
-            } as Partial<VectorLayerConfig>,
-        );
+        rootStore.treeStore.updateLayerConfig(nodeId, {
+            paint: {
+                ...paint,
+                "fill-opacity": newOpacity,
+                "line-opacity": newOpacity,
+                "circle-opacity": newOpacity,
+            },
+        } as Partial<VectorLayerConfig>);
     };
 
     const handleOpacityChange = (newOpacity: number): void => {
