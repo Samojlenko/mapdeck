@@ -1,7 +1,10 @@
 import { useEffect, useRef, type RefObject } from "react";
 import maplibregl from "maplibre-gl";
+import { Protocol } from "pmtiles";
 import type { RootStore } from "@core/framework/store";
-import { initBasemap } from "./initBasemap";
+
+const pmtilesProtocol = new Protocol();
+maplibregl.addProtocol("pmtiles", pmtilesProtocol.tile);
 
 /** Create/dispose the maplibre map and start basemap sync. Runs once. */
 export function useMapLifecycle(
@@ -20,11 +23,13 @@ export function useMapLifecycle(
         mapRef.current = map;
 
         map.once("load", () => {
-            initBasemap(rootStore, map);
+            rootStore.basemapStore.findAndApplyInitialBasemap();
+            rootStore.basemapStore.startSync();
         });
 
         return () => {
             initRef.current = false;
+            rootStore.basemapStore.stopSync();
             rootStore.mapStore.dispose();
             mapRef.current = null;
         };

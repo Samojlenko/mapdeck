@@ -5,15 +5,12 @@ import { LayerManager } from "@core/domain/managers/LayerManager";
 import { logger } from "@core/shared/diagnostics/logger";
 import { validateBbox, flattenTo2D, type Bbox } from "@core/shared/geo";
 import { type RootStore } from "@core/framework/store";
-import type { BaseMapConfig, MapContext } from "@core/framework/types";
-
-const BASEMAP_LAYER_ID = "basemap";
+import type { MapContext } from "@core/framework/types";
 
 export class MapStore {
     private map: maplibregl.Map | null = null;
     readonly overlayManager: DeckOverlayManager;
     private layerManager: LayerManager | null = null;
-    private _basemapConfigs: BaseMapConfig[] = [];
 
     constructor(readonly rootStore: RootStore) {
         this.overlayManager = new DeckOverlayManager();
@@ -109,81 +106,113 @@ export class MapStore {
     }
 
     /**
-     * Register the full basemap config list (called once during app init).
-     * Enables `availableBasemaps` and `activeBasemap` getters.
+     * Apply a style fragment to the map, prefixing all source and layer IDs.
+     * Source references in layers are remapped to use the same prefix.
+     * Tracks owned IDs in the caller-provided Set.
      */
-    registerBasemapConfigs(configs: BaseMapConfig[]): void {
-        this._basemapConfigs = configs;
-    }
-
-    /**
-     * Basemaps filterable by the current setting options.
-     * Falls back to the full registered list if no setting is registered.
-     */
-    get availableBasemaps(): BaseMapConfig[] {
-        const setting =
-            this.rootStore.settingsStore.getOwnerSettings("basemap")[0];
-        if (!setting || setting.type !== "select" || !setting.options) {
-            return this._basemapConfigs;
-        }
-        const optionIds = new Set(setting.options.map((o) => o.value));
-        return this._basemapConfigs.filter((bm) => optionIds.has(bm.id));
-    }
-
-    /** Currently active basemap config, resolved from the setting. */
-    get activeBasemap(): BaseMapConfig | undefined {
-        const id =
-            this.rootStore.settingsStore.getStringSetting("basemap.basemap");
-        if (!id) return undefined;
-        return this._basemapConfigs.find((bm) => bm.id === id);
-    }
-
-    /** Switch the active basemap setting. */
-    setActiveBasemap(basemapId: string): void {
-        this.rootStore.settingsStore.setSetting("basemap.basemap", basemapId);
-    }
-
-    /**
-     * Apply a basemap config directly to the maplibre map.
-     * Replaces any existing basemap source/layer.
-     */
-    applyBasemapToMap(basemap: BaseMapConfig): void {
+    applyStyleFragment(
+        style: Partial<maplibregl.StyleSpecification>,
+        prefix: string,
+        ownedIds: Set<string>,
+    ): void {
         if (!this.map) return;
 
-        if (this.map.getSource(BASEMAP_LAYER_ID)) {
-            this.map.removeLayer(BASEMAP_LAYER_ID);
-            this.map.removeSource(BASEMAP_LAYER_ID);
+        const { sources, layers, sprite, glyphs } = style;
+
+        if (sources) {
+            this._addStyleSources(sources, prefix, ownedIds);
         }
 
-        const source: maplibregl.RasterSourceSpecification = {
-            type: "raster",
-            tiles: [basemap.url],
-            tileSize: 256,
-            attribution: basemap.attribution || "",
-            minzoom: basemap.minZoom || 0,
-            maxzoom: basemap.maxZoom || 22,
-        };
+        if (layers) {
+            this._addStyleLayers(layers, prefix, ownedIds);
+        }
 
-        const style = this.map.getStyle();
-        const layerIds = style.layers?.map((l) => l.id) || [];
+        if (sprite) {
+            this._setStyleSprite(sprite);
+        }
 
-        let beforeId: string | undefined;
-        for (const layerId of layerIds) {
-            if (layerId !== BASEMAP_LAYER_ID) {
-                beforeId = layerId;
-                break;
+        if (glyphs) {
+            this.map.setGlyphs(glyphs as string);
+        }
+    }
+
+    private _addStyleSources(
+        sources: Record<string, maplibregl.SourceSpecification>,
+        prefix: string,
+        ownedIds: Set<string>,
+    ): void {
+        for (const [srcId, srcSpec] of Object.entries(sources)) {
+            const prefixedId = prefix + srcId;
+            this.map!.addSource(prefixedId, srcSpec);
+            ownedIds.add(prefixedId);
+        }
+    }
+
+    private _addStyleLayers(
+        layers: maplibregl.LayerSpecification[],
+        prefix: string,
+        ownedIds: Set<string>,
+    ): void {
+        const beforeId = this._findBeforeId(prefix);
+
+        for (const layerSpec of layers) {
+            const prefixedId = prefix + layerSpec.id;
+            const spec = { ...layerSpec } as Record<string, unknown>;
+            spec.id = prefixedId;
+
+            if ("source" in spec && typeof spec.source === "string") {
+                spec.source = prefix + (spec.source as string);
+            }
+
+            this.map!.addLayer(spec as maplibregl.LayerSpecification, beforeId);
+            ownedIds.add(prefixedId);
+        }
+    }
+
+    private _setStyleSprite(sprite: string | Array<{ url: string }>): void {
+        const spriteUrl = typeof sprite === "string" ? sprite : sprite[0]?.url;
+        if (spriteUrl) {
+            const absoluteUrl = new URL(spriteUrl, window.location.origin).href;
+            this.map!.setSprite(absoluteUrl);
+        }
+    }
+
+    /**
+     * Remove layers then sources for the given set of owned IDs.
+     * Safe to call with IDs that don't exist on the map.
+     */
+    removeOwnedLayers(ownedIds: Set<string>): void {
+        if (!this.map) return;
+
+        for (const id of ownedIds) {
+            if (this.map.getLayer(id)) {
+                try {
+                    this.map.removeLayer(id);
+                } catch {
+                    // Layer may have been removed externally
+                }
             }
         }
 
-        this.map.addSource(BASEMAP_LAYER_ID, source);
-        this.map.addLayer(
-            {
-                id: BASEMAP_LAYER_ID,
-                type: "raster",
-                source: BASEMAP_LAYER_ID,
-            },
-            beforeId,
-        );
+        for (const id of ownedIds) {
+            if (this.map.getSource(id)) {
+                try {
+                    this.map.removeSource(id);
+                } catch {
+                    // Source may have been removed externally
+                }
+            }
+        }
+    }
+
+    /** Find the insertion point: first non-prefixed layer in the stack. */
+    private _findBeforeId(prefix: string): string | undefined {
+        const style = this.map!.getStyle();
+        const ids = style.layers?.map((l) => l.id) ?? [];
+        for (const id of ids) {
+            if (!id.startsWith(prefix)) return id;
+        }
+        return undefined;
     }
 
     dispose(): void {

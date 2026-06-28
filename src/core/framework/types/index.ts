@@ -133,4 +133,4 @@ export type { MeasurementPoint3D, VolumeMeasurements } from "./data";
 export type { OverlayConfig, ManagedLayer, OverlayManager } from "./framework";
 
 // === Config types ===
-export type { BaseMapConfig, BaseMapSettings } from "./config/config";
+export type { BaseMapConfig } from "./config/config";

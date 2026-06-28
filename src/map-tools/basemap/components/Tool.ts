@@ -5,13 +5,13 @@ import type {
     MapTool,
     MapToolPlacement,
     SettingMetadata,
-    BaseMapSettings,
+    BaseMapConfig,
 } from "@core/framework/types";
 import { BasemapComponent } from "./Grid";
 import basemapConfigData from "../config.json";
 import { basemapTranslations } from "../locale";
 
-const basemapSettings = basemapConfigData as BaseMapSettings;
+const basemapConfigs = basemapConfigData as BaseMapConfig[];
 
 export const BASEMAP_TOOL_ID = "basemap" as const;
 
@@ -32,7 +32,7 @@ export class BasemapTool implements MapTool {
             isActive: observable,
         });
 
-        const basemaps = basemapSettings.available_basemaps.map((bm) => ({
+        const basemaps = basemapConfigs.map((bm) => ({
             label: bm.name,
             value: bm.id,
         }));
@@ -42,8 +42,7 @@ export class BasemapTool implements MapTool {
                 id: `${BASEMAP_TOOL_ID}.basemap`,
                 label: "Basemap",
                 type: "select",
-                defaultValue:
-                    basemaps[0]?.value ?? basemapSettings.active_basemap_id,
+                defaultValue: basemaps[0]?.value ?? basemapConfigs[0]?.id ?? "",
                 options: basemaps,
             },
         ];

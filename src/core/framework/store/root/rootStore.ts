@@ -4,6 +4,7 @@ import { LayerVisibilityStore } from "../layer/LayerVisibilityStore";
 import { AttributeDataStore } from "../layer/AttributeDataStore";
 import { ToolStore } from "../layer/ToolStore";
 import { MapStore } from "../map/MapStore";
+import { BasemapStore } from "../map/BasemapStore";
 import { MapToolStore } from "../map/MapToolStore";
 import { SettingsStore } from "../settings/SettingsStore";
 import { WidgetCatalogStore } from "../widget/WidgetCatalogStore";
@@ -23,6 +24,7 @@ import {
 import { registerModules } from "@modules/registerModules";
 import { registerTools } from "@layer-tools/registerTools";
 import { registerMapTools } from "@map-tools/registerMapTools";
+import { registerBasemaps } from "@core/domain/basemap";
 
 export class RootStore {
     // Adapter factories — available before any store
@@ -36,6 +38,7 @@ export class RootStore {
     readonly attributeDataStore: AttributeDataStore;
     readonly layerToolStore: ToolStore;
     readonly mapStore: MapStore;
+    readonly basemapStore: BasemapStore;
     readonly mapToolStore: MapToolStore;
     readonly settingsStore: SettingsStore;
     readonly catalogStore: WidgetCatalogStore;
@@ -66,6 +69,7 @@ export class RootStore {
         this.attributeDataStore = new AttributeDataStore(this);
         this.layerToolStore = new ToolStore(this);
         this.mapStore = new MapStore(this);
+        this.basemapStore = new BasemapStore(this);
         this.mapToolStore = new MapToolStore(this);
         this.catalogStore = new WidgetCatalogStore(this);
         this.overlayStore = new WidgetOverlayStore(this);
@@ -80,6 +84,7 @@ export class RootStore {
             yield registerAttributeAdapters(this);
             yield registerBuiltInWidgets(this);
             yield registerTools(this);
+            yield registerBasemaps(this);
             yield registerMapTools(this);
             yield registerModules(this);
             yield this.treeStore.fetchLayerTree();
