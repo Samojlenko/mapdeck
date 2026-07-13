@@ -1,5 +1,5 @@
 import { LayerRoles, makeRenderDescriptor } from "@core/framework/types";
-import type { DisplayRole } from "@core/framework/types";
+import type { MapLayer } from "@core/framework/types";
 import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
 import type { STACAsset } from "../../types";
 
@@ -25,7 +25,7 @@ export class GeoJsonRoleResolver implements IRoleResolver {
         );
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): DisplayRole {
+    resolve(asset: STACAsset, ctx: ResolveContext): MapLayer {
         const sourceUrl = resolveOgcFeaturesUrl(asset.href);
         const layerConfig = ctx.registry.create(LayerRoles.GEOJSON);
         const cfg = layerConfig as unknown as Record<string, unknown>;
@@ -33,7 +33,7 @@ export class GeoJsonRoleResolver implements IRoleResolver {
 
         return {
             id: ctx.assetKey,
-            category: "display",
+            category: "render",
             label: asset.title ?? ctx.assetKey,
             ...(asset.type ? { mimeType: asset.type } : {}),
             render: makeRenderDescriptor(

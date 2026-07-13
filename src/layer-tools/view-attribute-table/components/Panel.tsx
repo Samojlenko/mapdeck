@@ -25,9 +25,9 @@ export const ViewAttributeTableComponent: (
         return null;
     }
 
-    // Only render if this node has an attribute (WFS) role
-    const attrRole = node.roles.attribute;
-    if (!attrRole) {
+    // Only render if this node exposes a data table capability.
+    const dataTable = node.capabilities.dataTable;
+    if (!dataTable) {
         return null;
     }
 

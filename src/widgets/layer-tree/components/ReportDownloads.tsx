@@ -12,7 +12,7 @@ export interface ReportDownloadsProps {
 }
 
 /**
- * Renders download buttons for all report roles of a node.
+ * Renders download buttons for all download capabilities of a node.
  */
 export const ReportDownloads: (props: ReportDownloadsProps) => React.ReactNode =
     observer(({ nodeId }) => {
@@ -22,8 +22,8 @@ export const ReportDownloads: (props: ReportDownloadsProps) => React.ReactNode =
 
         if (!node) return null;
 
-        const reportRoles = node.roles.reports;
-        if (reportRoles.length === 0) return null;
+        const downloads = node.capabilities.downloads;
+        if (downloads.length === 0) return null;
 
         return (
             <div className={styles.reportDownloadsContainer}>
@@ -31,29 +31,29 @@ export const ReportDownloads: (props: ReportDownloadsProps) => React.ReactNode =
                     {dict["label.reports"]}
                 </span>
                 <div className={styles.reportButtons}>
-                    {reportRoles.map((role) => (
-                        <div key={role.id} className={styles.reportRow}>
+                    {downloads.map((download) => (
+                        <div key={download.id} className={styles.reportRow}>
                             <button
                                 className={styles.reportButton}
                                 onClick={() =>
-                                    openReport(role.sourceUrl, role.label)
+                                    openReport(download.sourceUrl, download.label)
                                 }
                                 title={formatDict(dict["aria.openReport"]!, {
-                                    label: role.label,
+                                    label: download.label,
                                 })}
                             >
                                 <span className={styles.reportButtonText}>
-                                    {role.label}
+                                    {download.label}
                                 </span>
                             </button>
                             <button
                                 className={styles.downloadButton}
                                 onClick={() =>
-                                    downloadReport(role.sourceUrl, role.label)
+                                    downloadReport(download.sourceUrl, download.label)
                                 }
                                 title={formatDict(
                                     dict["aria.downloadReport"]!,
-                                    { label: role.label },
+                                    { label: download.label },
                                 )}
                             >
                                 <Icon

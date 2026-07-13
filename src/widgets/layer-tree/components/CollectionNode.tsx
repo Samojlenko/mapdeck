@@ -104,8 +104,8 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
             // Check if this node's "More" panel is open
             const isPanelOpen = treeStore.isNodePanelOpen(node.id);
 
-            // Check if this group has any report roles
-            const hasReports = node.roles.reports.length > 0;
+            // Check if this group has any download capabilities.
+            const hasReports = node.capabilities.downloads.length > 0;
 
             // BaseNode props for the collection header
             const baseNodeProps: BaseNodeProps = {

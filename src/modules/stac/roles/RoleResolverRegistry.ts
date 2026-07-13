@@ -1,4 +1,4 @@
-import type { NodeRole } from "@core/framework/types";
+import type { NodeCapability } from "@core/framework/types";
 import type { IRoleResolver, ResolveContext } from "./IRoleResolver";
 import type { STACAsset } from "../types";
 
@@ -15,10 +15,10 @@ export class RoleResolverRegistry {
   }
 
   /**
-   * Returns the NodeRole from the first matching resolver, or null.
+   * Returns the node capability from the first matching resolver, or null.
    * Iterates in ascending priority order.
    */
-  resolve(asset: STACAsset, ctx: ResolveContext): NodeRole | null {
+  resolve(asset: STACAsset, ctx: ResolveContext): NodeCapability | null {
     for (const resolver of this.resolvers) {
       if (resolver.canResolve(asset, ctx)) {
         return resolver.resolve(asset, ctx);

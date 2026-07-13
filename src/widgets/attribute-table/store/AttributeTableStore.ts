@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type { RootStore } from "@core/framework/store";
-import { isLayerNode, type AttributeRole } from "@core/framework/types";
+import { isLayerNode, type DataTable } from "@core/framework/types";
 import type { Bbox } from "@core/shared/geo";
 import {
     buildAttributeLayers,
@@ -47,12 +47,12 @@ export class AttributeTableStore {
         );
     }
 
-    /** Attribute role metadata for the selected layer (used by external tools, e.g. data export). */
-    get attributeRole(): AttributeRole | null {
+    /** Data table metadata for the selected layer (used by external tools, e.g. data export). */
+    get dataTable(): DataTable | null {
         if (!this.selectedLayerId) return null;
         const node = this.rootStore.treeStore.getNode(this.selectedLayerId);
         if (!node || !isLayerNode(node)) return null;
-        return node.roles.attribute ?? null;
+        return node.capabilities.dataTable ?? null;
     }
 
     get cachedData() {

@@ -126,11 +126,11 @@ interface NodeFlags {
 
 function getLayerTypeIconForNode(node: TreeNode): IconName {
     if (isLayerNode(node)) {
-        const displayRole = node.roles.display;
-        if (!displayRole) return "layers";
-        if (displayRole.render.config) {
+        const mapLayer = node.capabilities.mapLayer;
+        if (!mapLayer) return "layers";
+        if (mapLayer.render.config) {
             return (
-                LAYER_ROLE_ICON[displayRole.render.config.role as LayerRole] ??
+                LAYER_ROLE_ICON[mapLayer.render.config.role as LayerRole] ??
                 "raster"
             );
         }
@@ -173,7 +173,7 @@ function getNodeFlags(
     const isLayer = isLayerNode(node);
     const nodeVisibility = isGroup || isLayer ? node.isVisible : false;
     const hasEyeIcon = isGroup || isLayer;
-    const hasReports = node.roles.reports.length > 0;
+    const hasReports = node.capabilities.downloads.length > 0;
     const shouldShowExpandArrow = showExpandArrow ?? isGroup;
 
     return {
@@ -260,8 +260,8 @@ const BaseNode: (props: BaseNodeProps) => React.ReactNode = observer(
             onToggleExpansion,
         );
 
-        // Placeholder nodes (no display role) get no action buttons
-        const isPlaceholder = isLayerNode(node) && !node.roles.display;
+        // Placeholder nodes (no map layer capability) get no action buttons.
+        const isPlaceholder = isLayerNode(node) && !node.capabilities.mapLayer;
         if (isPlaceholder) {
             flags.hasEyeIcon = false;
             flags.hasZoom = false;

@@ -5,12 +5,12 @@ import {
     LayerTreeNodeTypes,
     type LayerNode,
     type GroupNode,
-    type NodeRoles,
-    type LayerNodeRoles,
+    type NodeCapabilities,
+    type LayerNodeCapabilities,
 } from "@core/framework/types";
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
-import { mapAssetsToNodeRoles } from "./RoleMapper";
+import { mapAssetsToNodeCapabilities } from "./RoleMapper";
 import type { LayerConfigRegistry } from "@core/domain/adapters";
 import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { Bbox, flattenTo2D } from "@core/shared/geo";
@@ -31,19 +31,16 @@ export class STACEntityMapper {
             new Bbox(collection.extent.spatial.bbox[0]!),
         );
 
-        const roles: NodeRoles = collection.assets
-            ? mapAssetsToNodeRoles(
+        const capabilities: NodeCapabilities = collection.assets
+            ? mapAssetsToNodeCapabilities(
                   collection.assets,
                   this.roleRegistry,
                   this.layerConfigRegistry,
               )
-            : { reports: [] };
+            : { downloads: [] };
 
-        // Estimate the number of direct children.
-        // Count directly linked children (static STAC).
-        // 0 means unknown — the component will decide how to handle it.
         const childLinkCount = collection.links.filter(
-            (l) => l.rel === "child" || l.rel === "item",
+            (link) => link.rel === "child" || link.rel === "item",
         ).length;
 
         return {
@@ -59,14 +56,14 @@ export class STACEntityMapper {
             childrenIds,
             childrenCount: childLinkCount,
             bbox: flattenedBbox,
-            roles,
+            capabilities,
             isExtended: false,
             isVisible: false,
         } as GroupNode;
     }
 
     mapItemToLayerNode(item: STACItem): TreeNode | null {
-        const roles = mapAssetsToNodeRoles(
+        const capabilities = mapAssetsToNodeCapabilities(
             item.assets,
             this.roleRegistry,
             this.layerConfigRegistry,
@@ -76,13 +73,17 @@ export class STACEntityMapper {
 
         const hasBbox = item.bbox && item.bbox.length >= 4;
 
-        if (roles.reports.length === 0 && !roles.display && !roles.attribute) {
+        if (
+            capabilities.downloads.length === 0 &&
+            !capabilities.mapLayer &&
+            !capabilities.dataTable
+        ) {
             return this.createPlaceholderOrSkip(item, hasBbox, "no assets");
         }
 
-        const layerRoles = this.resolveRoleConflicts(roles);
-        if (!layerRoles) {
-            return this.createPlaceholderOrSkip(item, hasBbox, "no display");
+        const layerCapabilities = this.resolveCapabilityConflicts(capabilities);
+        if (!layerCapabilities) {
+            return this.createPlaceholderOrSkip(item, hasBbox, "no map layer");
         }
 
         const flattenedBbox = hasBbox ? flattenTo2D(new Bbox(item.bbox)) : null;
@@ -98,7 +99,7 @@ export class STACEntityMapper {
             },
             parentId: null,
             bbox: flattenedBbox,
-            roles: layerRoles,
+            capabilities: layerCapabilities,
             isVisible: false,
         };
 
@@ -126,28 +127,23 @@ export class STACEntityMapper {
     }
 
     /**
-     * Resolve role conflicts by keeping only one display role and one attribute role.
-     * Report roles are kept as-is (multiple reports are allowed).
-     *
-     * Returns null if no display role is present (item cannot be a layer).
+     * Returns a layer's rendering and table capabilities, or null when it has
+     * no map layer capability and must be represented as a placeholder.
      */
-    private resolveRoleConflicts(roles: NodeRoles): LayerNodeRoles | null {
-        if (!roles.display) return null;
+    private resolveCapabilityConflicts(
+        capabilities: NodeCapabilities,
+    ): LayerNodeCapabilities | null {
+        if (!capabilities.mapLayer) return null;
 
-        const result: LayerNodeRoles = {
-            display: roles.display,
-            reports: roles.reports,
+        const result: LayerNodeCapabilities = {
+            mapLayer: capabilities.mapLayer,
+            downloads: capabilities.downloads,
         };
-        if (roles.attribute) result.attribute = roles.attribute;
+        if (capabilities.dataTable) result.dataTable = capabilities.dataTable;
         return result;
     }
 
-    /**
-     * Create a placeholder layer node for items that have spatial extent
-     * but no renderable assets. The node has no display role — it appears
-     * in the tree with the item title and bbox, but no map rendering or
-     * action buttons.
-     */
+    /** Creates a placeholder layer node when an item has an extent but no map layer. */
     private createPlaceholderOrSkip(
         item: STACItem,
         hasBbox: boolean,
@@ -173,7 +169,7 @@ export class STACEntityMapper {
             },
             parentId: null,
             bbox: flattenedBbox,
-            roles: { reports: [] },
+            capabilities: { downloads: [] },
             isVisible: false,
         };
 

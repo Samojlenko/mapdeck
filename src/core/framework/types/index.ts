@@ -69,14 +69,14 @@ export {
 } from "./domain/layer";
 
 export type {
-    NodeRole,
-    NodeRoleCategory,
-    NodeAttributeConfig,
-    DisplayRole,
-    AttributeRole,
-    ReportRole,
-    NodeRoles,
-    LayerNodeRoles,
+    NodeCapability,
+    CapabilityKind,
+    CapabilityBase,
+    MapLayer,
+    DataTable,
+    Download,
+    NodeCapabilities,
+    LayerNodeCapabilities,
     TreeNode,
     TreeNodeBase,
     GroupNode,

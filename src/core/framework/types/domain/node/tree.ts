@@ -1,10 +1,13 @@
 /**
  * Tree node types and interfaces for layer tree structure.
  *
- * Nodes carry structured roles (NodeRoles) for capabilities.
- * Core does NOT know about STAC — STAC module maps into NodeRoles.
+ * Nodes carry structured capabilities.
+ * Core does NOT know about STAC — STAC module maps external assets into capabilities.
  */
-import { type NodeRoles, type LayerNodeRoles } from "./role";
+import {
+    type NodeCapabilities,
+    type LayerNodeCapabilities,
+} from "./capabilities";
 import { type Bbox } from "@core/framework/types/geo";
 import { type IObservableArray } from "mobx";
 
@@ -31,11 +34,11 @@ export interface TreeNodeBase {
     bbox: Bbox | null;
 
     /**
-     * Structured roles: display, attribute, reports.
+     * Structured capabilities: map layer, data table, downloads.
      *
-     * display is optional for GroupNode, required for LayerNode (via LayerNodeRoles override).
+     * A map layer is optional for every node, including placeholders.
      */
-    roles: NodeRoles;
+    capabilities: NodeCapabilities;
 
     /** Visibility toggle shared by all node types. */
     isVisible: boolean;
@@ -56,8 +59,8 @@ export interface GroupNode extends TreeNodeBase {
 export interface LayerNode extends TreeNodeBase {
     type: LayerTreeNodeTypes.Layer;
 
-    /** LayerNode has at most one display role. */
-    roles: LayerNodeRoles;
+    /** LayerNode has at most one map layer capability. */
+    capabilities: LayerNodeCapabilities;
 }
 
 export type TreeNode = GroupNode | LayerNode;

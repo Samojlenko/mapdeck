@@ -24,16 +24,16 @@ export const RasterOpacityComponent: (
         return null;
     }
 
-    const displayRole = node.roles.display;
-    if (!displayRole) return null;
-    if (!isRasterConfig(displayRole.render.config)) {
+    const mapLayer = node.capabilities.mapLayer;
+    if (!mapLayer) return null;
+    if (!isRasterConfig(mapLayer.render.config)) {
         logger.warn(
             `RasterOpacitySlider: node ${nodeId} is not a raster layer`,
         );
         return null;
     }
 
-    const currentOpacity = displayRole.render.config.opacity ?? 1.0;
+    const currentOpacity = mapLayer.render.config.opacity ?? 1.0;
 
     const handleOpacityChange = (newOpacity: number) => {
         rootStore.treeStore.updateLayerConfig<typeof LayerRoles.RASTER>(

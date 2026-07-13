@@ -35,18 +35,18 @@ const ItemNode: (props: ItemNodeProps) => React.ReactNode = observer(
             return null;
         }
 
-        // Get the active display role to determine tools
-        const displayRole = node.roles.display;
+        // Get the active map layer capability to determine tools.
+        const mapLayer = node.capabilities.mapLayer;
         const roleForTools =
-            displayRole?.render.config.role ?? LayerRoles.RASTER;
+            mapLayer?.render.config.role ?? LayerRoles.RASTER;
 
         // Check if this node has any tools available
-        const hasTools = displayRole
+        const hasTools = mapLayer
             ? rootStore.layerToolStore.getLayerTools(roleForTools).length > 0
             : false;
 
-        // Check if this node has any report roles
-        const hasReports = node.roles.reports.length > 0;
+        // Check if this node has any download capabilities.
+        const hasReports = node.capabilities.downloads.length > 0;
 
         // Check if this node's "More" panel is open
         const isPanelOpen = treeStore.isNodePanelOpen(node.id);

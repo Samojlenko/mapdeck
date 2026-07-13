@@ -15,6 +15,7 @@ import { LayerAdapterFactory } from "@core/domain/adapters/layer/LayerAdapterFac
 import { AttributeAdapterFactory } from "@core/domain/adapters/attribute/AttributeAdapterFactory";
 import { SourceAdapterFactory } from "@core/domain/adapters/source/SourceAdapterFactory";
 import { LayerConfigRegistry } from "@core/domain/adapters";
+import { ProtocolRegistry } from "@core/domain/protocols";
 import { logger } from "@core/shared/diagnostics/logger";
 import { registerBuiltInWidgets } from "@widgets/registerWidgets";
 import {
@@ -32,6 +33,7 @@ export class RootStore {
     readonly attributeAdapterFactory: AttributeAdapterFactory;
     readonly sourceAdapterFactory: SourceAdapterFactory;
     readonly layerConfigRegistry: LayerConfigRegistry;
+    readonly protocolRegistry: ProtocolRegistry;
 
     readonly treeStore: LayerTreeStore;
     readonly visibilityStore: LayerVisibilityStore;
@@ -57,6 +59,7 @@ export class RootStore {
         this.attributeAdapterFactory = new AttributeAdapterFactory();
         this.sourceAdapterFactory = new SourceAdapterFactory();
         this.layerConfigRegistry = new LayerConfigRegistry();
+        this.protocolRegistry = new ProtocolRegistry();
 
         // LocaleStore must be created early so other stores can use it
         this.localeStore = new LocaleStore();

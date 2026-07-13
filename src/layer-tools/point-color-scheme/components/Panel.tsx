@@ -27,9 +27,9 @@ export const PointColorSchemeComponent: (
         return null;
     }
 
-    const displayRole = node.roles.display;
-    if (!displayRole) return null;
-    if (!isPointCloudConfig(displayRole.render.config)) {
+    const mapLayer = node.capabilities.mapLayer;
+    if (!mapLayer) return null;
+    if (!isPointCloudConfig(mapLayer.render.config)) {
         logger.warn(
             `PointColorSchemeSelector: config for node ${nodeId} is not a point cloud config`,
         );
@@ -37,7 +37,7 @@ export const PointColorSchemeComponent: (
     }
 
     const currentScheme =
-        displayRole.render.config.colorScheme ?? ColorScheme.RGB;
+        mapLayer.render.config.colorScheme ?? ColorScheme.RGB;
 
     const handleSchemeChange = (
         event: React.ChangeEvent<HTMLSelectElement>,

@@ -27,10 +27,10 @@ function validateNode(
         return null;
     }
 
-    const displayRole = node.roles.display;
-    if (!displayRole) return null;
+    const mapLayer = node.capabilities.mapLayer;
+    if (!mapLayer) return null;
 
-    const config = displayRole.render.config as unknown as Record<
+    const config = mapLayer.render.config as unknown as Record<
         string,
         unknown
     >;

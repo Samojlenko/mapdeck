@@ -15,7 +15,7 @@ import {
 /**
  * Modern adapter-based Layer Manager
  *
- * Uses NodeRole system: gets active display role from node,
+ * Uses node capabilities: gets the active map layer from each node,
  * delegates operations to appropriate adapters by layer role.
  */
 export class LayerManager {

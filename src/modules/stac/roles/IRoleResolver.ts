@@ -1,4 +1,4 @@
-import type { NodeRole } from "@core/framework/types";
+import type { NodeCapability } from "@core/framework/types";
 import type { LayerConfigRegistry } from "@core/domain/adapters";
 import type { STACAsset } from "../types";
 
@@ -26,8 +26,8 @@ export interface IRoleResolver {
   canResolve(asset: STACAsset, ctx: ResolveContext): boolean;
 
   /**
-   * Creates a NodeRole. Called only if canResolved returned true.
+   * Creates a node capability. Called only if canResolved returned true.
    * Pure function: no side effects, no argument mutation.
    */
-  resolve(asset: STACAsset, ctx: ResolveContext): NodeRole;
+  resolve(asset: STACAsset, ctx: ResolveContext): NodeCapability;
 }

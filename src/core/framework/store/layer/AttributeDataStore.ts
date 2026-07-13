@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type { RootStore } from "@core/framework/store";
-import { isLayerNode, type AttributeRole } from "@core/framework/types";
+import { isLayerNode, type DataTable } from "@core/framework/types";
 import type {
     AttributeFetchRequest,
     AttributeSourceConfig,
@@ -139,9 +139,9 @@ export class AttributeDataStore {
         cacheKey: string,
         controller: AbortController,
     ): Promise<void> {
-        const role = this._getAttributeRole(nodeId);
-        const config = this._extractSourceConfig(role);
-        const adapter = this.rootStore.attributeAdapterFactory.get(role);
+        const dataTable = this._getDataTable(nodeId);
+        const config = this._extractSourceConfig(dataTable);
+        const adapter = this.rootStore.attributeAdapterFactory.get(dataTable);
 
         const result = await adapter.fetchPage(
             config,
@@ -186,24 +186,24 @@ export class AttributeDataStore {
         return parts.join("|");
     }
 
-    private _getAttributeRole(nodeId: string): AttributeRole {
+    private _getDataTable(nodeId: string): DataTable {
         const node = this.rootStore.treeStore.getNode(nodeId);
         if (!node || !isLayerNode(node))
             throw new Error(`Node ${nodeId} not found or not a layer`);
-        const role = node.roles.attribute;
-        if (!role) throw new Error(`No attribute role for ${nodeId}`);
-        return role;
+        const dataTable = node.capabilities.dataTable;
+        if (!dataTable) throw new Error(`No data table capability for ${nodeId}`);
+        return dataTable;
     }
 
-    private _extractSourceConfig(role: AttributeRole): AttributeSourceConfig {
+    private _extractSourceConfig(dataTable: DataTable): AttributeSourceConfig {
         const extraParams: Record<string, string> = {};
-        if (role.attributeConfig.params) {
-            for (const [k, v] of Object.entries(role.attributeConfig.params)) {
+        if (dataTable.params) {
+            for (const [k, v] of Object.entries(dataTable.params)) {
                 if (typeof v === "string") extraParams[k] = v;
             }
         }
         return {
-            endpointUrl: role.attributeConfig.endpointUrl,
+            endpointUrl: dataTable.endpointUrl,
             ...(Object.keys(extraParams).length > 0 && { extraParams }),
         };
     }

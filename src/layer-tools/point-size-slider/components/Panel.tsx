@@ -37,16 +37,16 @@ export const PointSizeSliderComponent: (
         return null;
     }
 
-    const displayRole = node.roles.display;
-    if (!displayRole) return null;
-    if (!isPointCloudConfig(displayRole.render.config)) {
+    const mapLayer = node.capabilities.mapLayer;
+    if (!mapLayer) return null;
+    if (!isPointCloudConfig(mapLayer.render.config)) {
         logger.warn(
             `PointSizeSlider: config for node ${nodeId} is not a point cloud config`,
         );
         return null;
     }
 
-    const config = displayRole.render.config as PointCloudLayerConfig;
+    const config = mapLayer.render.config as PointCloudLayerConfig;
 
     const applyPointSizeUpdate = useCallback(
         (newPointSize: number) => {

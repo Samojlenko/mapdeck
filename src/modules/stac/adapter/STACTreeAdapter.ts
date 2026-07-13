@@ -2,7 +2,7 @@ import { observable, runInAction } from "mobx";
 import {
     type SourceAdapter,
     type TreeNode,
-    type ReportRole,
+    type Download,
     LayerTreeNodeTypes,
 } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
@@ -137,7 +137,7 @@ export class STACTreeAdapter implements SourceAdapter {
         // Merge collected reports from items into parent GroupNode
         runInAction(() => {
             for (const result of itemResults) {
-                parent.roles.reports.push(...result.collectedReports);
+                parent.capabilities.downloads.push(...result.collectedDownloads);
             }
         });
 
@@ -167,11 +167,11 @@ interface FetchContext {
 
 interface FetchItemsResult {
     nodes: TreeNode[];
-    collectedReports: ReportRole[];
+    collectedDownloads: Download[];
 }
 
-function collectReportsFromNodes(nodes: TreeNode[]): ReportRole[] {
-    return nodes.flatMap((n) => n.roles?.reports ?? []);
+function collectDownloadsFromNodes(nodes: TreeNode[]): Download[] {
+    return nodes.flatMap((node) => node.capabilities.downloads);
 }
 
 async function fetchChildCollections(
@@ -307,12 +307,12 @@ async function fetchItemsFromUrl(
         enriched.forEach((item) => ctx.cache.store(item));
 
         const nodes = mapItemsToNodes(enriched, ctx.mapper);
-        const collectedReports = collectReportsFromNodes(nodes);
+        const collectedDownloads = collectDownloadsFromNodes(nodes);
 
-        return { nodes, collectedReports };
+        return { nodes, collectedDownloads };
     } catch (error) {
         logger.warn(`Failed to load items from ${href}:`, error);
-        return { nodes: [], collectedReports: [] };
+        return { nodes: [], collectedDownloads: [] };
     }
 }
 

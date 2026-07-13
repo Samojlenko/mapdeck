@@ -7,7 +7,7 @@ export function buildAttributeLayers(
 ): AttributeLayerInfo[] {
     const result: AttributeLayerInfo[] = [];
     for (const node of layerNodes) {
-        if (!node.roles.attribute) continue;
+        if (!node.capabilities.dataTable) continue;
         let groupTitle: string | null = null;
         if (node.parentId) {
             const parent = getNode(node.parentId);

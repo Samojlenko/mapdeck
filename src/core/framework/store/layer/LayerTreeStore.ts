@@ -318,10 +318,10 @@ export class LayerTreeStore {
             logger.error(`Layer node ${nodeId} not found`);
             return;
         }
-        const { display } = node.roles;
-        if (!display) return;
-        display.render = updateDescriptorConfig(
-            display.render as RenderDescriptor<TRole>,
+        const { mapLayer } = node.capabilities;
+        if (!mapLayer) return;
+        mapLayer.render = updateDescriptorConfig(
+            mapLayer.render as RenderDescriptor<TRole>,
             updates,
         );
         this.visibility.clearExtentCache(nodeId);
@@ -443,11 +443,11 @@ export class LayerTreeStore {
     private _layerSnapshot = computed<SnapshotItem[]>(
         () => {
             return this._collectLayerNodes().map((node) => {
-                const { display } = node.roles;
+                const { mapLayer } = node.capabilities;
                 return {
                     id: node.id,
                     visible: node.isVisible,
-                    descriptor: display ? toJS(display.render) : null,
+                    descriptor: mapLayer ? toJS(mapLayer.render) : null,
                 };
             });
         },

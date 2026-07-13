@@ -1,13 +1,22 @@
 export type {
-    NodeRole,
-    NodeRoleCategory,
-    NodeAttributeConfig,
-    DisplayRole,
-    AttributeRole,
-    ReportRole,
-    NodeRoles,
-    LayerNodeRoles,
-} from "./role";
+    NodeCapability,
+    CapabilityKind,
+    CapabilityBase,
+    MapLayer,
+    DataTable,
+    Download,
+    NodeCapabilities,
+    LayerNodeCapabilities,
+} from "./capabilities";
+
 export { LayerTreeNodeTypes } from "./tree";
-export type { TreeNodeBase, GroupNode, LayerNode, TreeNode } from "./tree";
-export { isGroupNode, isLayerNode } from "./tree";
+export type {
+    TreeNodeBase,
+    GroupNode,
+    LayerNode,
+    TreeNode,
+} from "./tree";
+export {
+    isGroupNode,
+    isLayerNode,
+} from "./tree";

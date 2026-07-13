@@ -1,5 +1,5 @@
 import { LayerRoles, makeRenderDescriptor, Bbox } from "@core/framework/types";
-import type { DisplayRole } from "@core/framework/types";
+import type { MapLayer } from "@core/framework/types";
 import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
 import type { STACAsset } from "../../types";
 import { POINTCLOUD_MIMES } from "../../types/extensions/pointcloud";
@@ -28,7 +28,7 @@ export class PointCloudRoleResolver implements IRoleResolver {
         return isOctetStream && !!ctx.properties?.["pc:encoding"];
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): DisplayRole {
+    resolve(asset: STACAsset, ctx: ResolveContext): MapLayer {
         const layerConfig = ctx.registry.create(LayerRoles.POINT_CLOUD);
         const cfg = layerConfig as unknown as Record<string, unknown>;
         cfg.url = asset.href;
@@ -41,7 +41,7 @@ export class PointCloudRoleResolver implements IRoleResolver {
 
         return {
             id: ctx.assetKey,
-            category: "display",
+            category: "render",
             label: asset.title ?? ctx.assetKey,
             ...(asset.type ? { mimeType: asset.type } : {}),
             render: makeRenderDescriptor(

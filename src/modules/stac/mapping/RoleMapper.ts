@@ -1,8 +1,8 @@
 import type {
-    NodeRoles,
-    DisplayRole,
-    AttributeRole,
-    ReportRole,
+    NodeCapabilities,
+    MapLayer,
+    DataTable,
+    Download,
 } from "@core/framework/types";
 import { LayerRoles } from "@core/framework/types";
 import type { LayerConfigRegistry } from "@core/domain/adapters";
@@ -12,17 +12,17 @@ import type { ResolveContext } from "../roles/IRoleResolver";
 import type { STACAsset } from "../types";
 import { resolveOgcFeaturesUrl } from "../roles/resolvers/GeoJsonRoleResolver";
 
-export function mapAssetsToNodeRoles( // eslint-disable-line max-params
+export function mapAssetsToNodeCapabilities( // eslint-disable-line max-params
     assets: Readonly<Record<string, STACAsset>>,
     registry: RoleResolverRegistry,
     layerConfigRegistry: LayerConfigRegistry,
     properties?: Record<string, unknown>,
     itemBbox?: readonly number[],
     stac_extensions?: readonly string[],
-): NodeRoles {
-    const displayCandidates: DisplayRole[] = [];
-    const attributeCandidates: AttributeRole[] = [];
-    const reportRoles: ReportRole[] = [];
+): NodeCapabilities {
+    const mapLayerCandidates: MapLayer[] = [];
+    const dataTableCandidates: DataTable[] = [];
+    const downloads: Download[] = [];
 
     for (const [assetKey, asset] of Object.entries(assets)) {
         const collected = resolveSingleAsset(
@@ -35,27 +35,27 @@ export function mapAssetsToNodeRoles( // eslint-disable-line max-params
             stac_extensions,
         );
         if (!collected) continue;
-        if (collected.display) displayCandidates.push(collected.display);
-        if (collected.attribute) attributeCandidates.push(collected.attribute);
-        if (collected.report) reportRoles.push(collected.report);
+        if (collected.mapLayer) mapLayerCandidates.push(collected.mapLayer);
+        if (collected.dataTable) dataTableCandidates.push(collected.dataTable);
+        if (collected.download) downloads.push(collected.download);
     }
 
-    const { display, attribute } = resolveDisplayPriority(
-        displayCandidates,
-        attributeCandidates,
+    const { mapLayer, dataTable } = resolveMapLayerPriority(
+        mapLayerCandidates,
+        dataTableCandidates,
     );
 
-    const result: NodeRoles = { reports: reportRoles };
-    if (display) result.display = display;
-    if (attribute) result.attribute = attribute;
+    const result: NodeCapabilities = { downloads };
+    if (mapLayer) result.mapLayer = mapLayer;
+    if (dataTable) result.dataTable = dataTable;
 
     return result;
 }
 
-interface SingleAssetRoles {
-    display?: DisplayRole;
-    attribute?: AttributeRole;
-    report?: ReportRole;
+interface SingleAssetCapabilities {
+    mapLayer?: MapLayer;
+    dataTable?: DataTable;
+    download?: Download;
 }
 
 function resolveSingleAsset( // eslint-disable-line max-params
@@ -66,7 +66,7 @@ function resolveSingleAsset( // eslint-disable-line max-params
     properties?: Record<string, unknown>,
     itemBbox?: readonly number[],
     stac_extensions?: readonly string[],
-): SingleAssetRoles | null {
+): SingleAssetCapabilities | null {
     const ctx: ResolveContext = {
         assetKey,
         registry: layerConfigRegistry,
@@ -75,134 +75,119 @@ function resolveSingleAsset( // eslint-disable-line max-params
         ...(stac_extensions !== undefined ? { stac_extensions } : {}),
     };
 
-    const role = registry.resolve(asset, ctx);
-    if (!role) return null;
+    const capability = registry.resolve(asset, ctx);
+    if (!capability) return null;
 
-    if (role.category === "display") {
-        return resolveDisplayWithAttribute(role as DisplayRole, asset, ctx);
+    if (capability.category === "render") {
+        return resolveMapLayerWithDataTable(capability, asset, ctx);
     }
 
-    switch (role.category) {
-        case "attribute":
-            return { attribute: role as AttributeRole };
+    switch (capability.category) {
+        case "data":
+            return { dataTable: capability };
         case "report":
-            return { report: role as ReportRole };
-        default:
-            return null;
+            return { download: capability };
     }
 }
 
 /**
- * When a GeoJSON display originates from an OGC API Features endpoint,
- * also expose the same source as an attribute table.
+ * When a GeoJSON map layer originates from an OGC API Features endpoint,
+ * also expose the same source as a data table.
  */
-function resolveDisplayWithAttribute(
-    display: DisplayRole,
+function resolveMapLayerWithDataTable(
+    mapLayer: MapLayer,
     asset: STACAsset,
     ctx: ResolveContext,
-): SingleAssetRoles {
+): SingleAssetCapabilities {
     const hasOgcRole = asset.roles?.includes("ogc") ?? false;
-    const isGeoJsonDisplay = display.render.role === LayerRoles.GEOJSON;
+    const isGeoJsonMapLayer = mapLayer.render.role === LayerRoles.GEOJSON;
 
-    if (!hasOgcRole || !isGeoJsonDisplay) {
-        return { display };
+    if (!hasOgcRole || !isGeoJsonMapLayer) {
+        return { mapLayer };
     }
 
-    // OGC API Features collection endpoint returns metadata, not data.
-    // Append /items to obtain the actual FeatureCollection.
     const itemsUrl = resolveOgcFeaturesUrl(asset.href);
 
     return {
-        display,
-        attribute: {
+        mapLayer,
+        dataTable: {
             id: ctx.assetKey,
-            category: "attribute",
+            category: "data",
             label: asset.title ?? ctx.assetKey,
             sourceUrl: itemsUrl,
             ...(asset.type ? { mimeType: asset.type } : {}),
-            attributeConfig: {
-                endpointUrl: itemsUrl,
-                type: "ogc-features",
-            },
+            endpointUrl: itemsUrl,
+            role: LayerRoles.of("ogc-features"),
         },
     };
 }
 
 /**
- * Display priority rule:
- * If a raster or point-cloud display role exists — vector/geojson roles
- * degrade to attribute. If no attribute exists yet, the first degraded
- * vector/geojson takes its place.
- *
- * Pure function. No side effects.
+ * If a raster or point-cloud map layer exists, vector and GeoJSON candidates
+ * degrade to data tables. If no data table exists yet, the first degraded
+ * vector or GeoJSON candidate takes its place.
  */
-function resolveDisplayPriority(
-    displayCandidates: DisplayRole[],
-    attributeCandidates: AttributeRole[],
+function resolveMapLayerPriority(
+    mapLayerCandidates: MapLayer[],
+    dataTableCandidates: DataTable[],
 ): {
-    display: DisplayRole | undefined;
-    attribute: AttributeRole | undefined;
+    mapLayer: MapLayer | undefined;
+    dataTable: DataTable | undefined;
 } {
-    if (displayCandidates.length === 0) {
-        return { display: undefined, attribute: attributeCandidates[0] };
+    if (mapLayerCandidates.length === 0) {
+        return { mapLayer: undefined, dataTable: dataTableCandidates[0] };
     }
 
-    const rasterOrPcRoles = new Set([
+    const rasterOrPointCloudRoles = new Set([
         LayerRoles.RASTER,
         LayerRoles.POINT_CLOUD,
     ]);
 
-    const rasterDisplays = displayCandidates.filter((d): boolean =>
-        rasterOrPcRoles.has(d.render.role),
+    const rasterMapLayers = mapLayerCandidates.filter((candidate): boolean =>
+        rasterOrPointCloudRoles.has(candidate.render.role),
     );
-    const vectorDisplays = displayCandidates.filter(
-        (d): boolean => !rasterOrPcRoles.has(d.render.role),
+    const vectorMapLayers = mapLayerCandidates.filter(
+        (candidate): boolean =>
+            !rasterOrPointCloudRoles.has(candidate.render.role),
     );
 
-    if (rasterDisplays.length > 0) {
-        if (rasterDisplays.length > 1) {
+    if (rasterMapLayers.length > 0) {
+        if (rasterMapLayers.length > 1) {
             logger.debug(
-                `Multiple raster display roles, using first: ${rasterDisplays[0]!.id}`,
+                `Multiple raster map layers, using first: ${rasterMapLayers[0]!.id}`,
             );
         }
-        // Vector/geojson candidates degrade to attribute
-        const promotedAttribute: AttributeRole | undefined =
-            vectorDisplays.length > 0
-                ? degradeToAttribute(vectorDisplays[0]!)
+        const promotedDataTable =
+            vectorMapLayers.length > 0
+                ? degradeToDataTable(vectorMapLayers[0]!)
                 : undefined;
 
         return {
-            display: rasterDisplays[0]!,
-            attribute: attributeCandidates[0] ?? promotedAttribute,
+            mapLayer: rasterMapLayers[0]!,
+            dataTable: dataTableCandidates[0] ?? promotedDataTable,
         };
     }
 
-    // No raster — first vector/geojson goes to display
-    if (displayCandidates.length > 1) {
+    if (mapLayerCandidates.length > 1) {
         logger.debug(
-            `Multiple display roles, using first: ${displayCandidates[0]!.id}`,
+            `Multiple map layers, using first: ${mapLayerCandidates[0]!.id}`,
         );
     }
     return {
-        display: displayCandidates[0],
-        attribute: attributeCandidates[0],
+        mapLayer: mapLayerCandidates[0],
+        dataTable: dataTableCandidates[0],
     };
 }
 
-/**
- * Converts a DisplayRole (vector/geojson) into an AttributeRole
- * for the attribute table.
- */
-function degradeToAttribute(display: DisplayRole): AttributeRole {
+/** Converts a vector or GeoJSON map layer into a data table. */
+function degradeToDataTable(mapLayer: MapLayer): DataTable {
     return {
-        id: display.id,
-        category: "attribute",
-        label: display.label,
-        sourceUrl: display.render.sourceUrl,
-        ...(display.mimeType ? { mimeType: display.mimeType } : {}),
-        attributeConfig: {
-            endpointUrl: display.render.sourceUrl,
-            type: display.render.role,
-        },
+        id: mapLayer.id,
+        category: "data",
+        label: mapLayer.label,
+        sourceUrl: mapLayer.render.sourceUrl,
+        ...(mapLayer.mimeType ? { mimeType: mapLayer.mimeType } : {}),
+        endpointUrl: mapLayer.render.sourceUrl,
+        role: LayerRoles.of(mapLayer.render.role),
     };
 }

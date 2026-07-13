@@ -9,8 +9,8 @@ import { type Module } from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
 import { STACTreeAdapter } from "../adapter/STACTreeAdapter";
 import { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
-import { ReportRoleResolver } from "../roles/resolvers/ReportRoleResolver";
-import { AttributeRoleResolver } from "../roles/resolvers/AttributeRoleResolver";
+import { DownloadResolver } from "../roles/resolvers/DownloadResolver";
+import { DataTableResolver } from "../roles/resolvers/DataTableResolver";
 import { RasterTileRoleResolver } from "../roles/resolvers/RasterTileRoleResolver";
 import { WmsRoleResolver } from "../roles/resolvers/WmsRoleResolver";
 import { VectorTileRoleResolver } from "../roles/resolvers/VectorTileRoleResolver";
@@ -50,8 +50,8 @@ export class STACModule implements Module {
 
 function createDefaultRoleRegistry(): RoleResolverRegistry {
     const registry = new RoleResolverRegistry();
-    registry.register(new ReportRoleResolver());
-    registry.register(new AttributeRoleResolver());
+    registry.register(new DownloadResolver());
+    registry.register(new DataTableResolver());
     registry.register(new RasterTileRoleResolver());
     registry.register(new WmsRoleResolver());
     registry.register(new VectorTileRoleResolver());

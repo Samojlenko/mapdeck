@@ -158,8 +158,8 @@ export class WmsFeatureProvider implements FeatureProvider {
     private getWmsLayers(visibleLayers: LayerNode[]): WmsLayerInfo[] {
         const result: WmsLayerInfo[] = [];
         for (const node of visibleLayers) {
-            if (!node.roles.display) continue;
-            const config = node.roles.display.render.config;
+            if (!node.capabilities.mapLayer) continue;
+            const config = node.capabilities.mapLayer.render.config;
             if (isRasterConfig(config) && config.type === "wms") {
                 result.push({ node, config });
             }
@@ -176,8 +176,8 @@ export class WmsFeatureProvider implements FeatureProvider {
     ): WmsLayerInfo[] {
         const result: WmsLayerInfo[] = [];
         for (const node of visibleLayers) {
-            if (!node.roles.display) continue;
-            const config = node.roles.display.render.config;
+            if (!node.capabilities.mapLayer) continue;
+            const config = node.capabilities.mapLayer.render.config;
             if (isRasterConfig(config) && config.type === type) {
                 result.push({ node, config });
             }

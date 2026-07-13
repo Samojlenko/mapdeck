@@ -1,7 +1,7 @@
 /**
  * Unified render descriptor — single source of truth for map rendering.
  * Replaces the layerConfig + sourceUrl pair that was split across
- * DisplayRole, SnapshotItem, and RenderUnit.
+ * MapLayer, SnapshotItem, and RenderUnit.
  */
 import type { LayerRole } from "./role";
 import type { LayerConfigFor } from "./config";
