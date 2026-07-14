@@ -22,6 +22,7 @@ import {
     registerLayerAdapters,
     registerAttributeAdapters,
 } from "@core/domain/adapters";
+import { registerProtocols } from "@core/domain/protocols";
 import { registerModules } from "@modules/registerModules";
 import { registerTools } from "@layer-tools/registerTools";
 import { registerMapTools } from "@map-tools/registerMapTools";
@@ -85,6 +86,7 @@ export class RootStore {
         try {
             yield registerLayerAdapters(this);
             yield registerAttributeAdapters(this);
+            registerProtocols(this);
             yield registerBuiltInWidgets(this);
             yield registerTools(this);
             yield registerBasemaps(this);

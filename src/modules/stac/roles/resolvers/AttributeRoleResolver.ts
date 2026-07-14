@@ -1,4 +1,4 @@
-import type { AttributeRole, NodeAttributeConfig } from "@core/framework/types";
+import { LayerRoles, type DataTable } from "@core/framework/types";
 import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
 import type { STACAsset } from "../../types";
 
@@ -11,23 +11,18 @@ export class AttributeRoleResolver implements IRoleResolver {
         return asset.roles?.some((r) => ATTRIBUTE_ROLES.has(r)) ?? false;
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): AttributeRole {
-        const adapterType =
+    resolve(asset: STACAsset, ctx: ResolveContext): DataTable {
+        const adapterRole =
             asset.roles?.find((r) => ATTRIBUTE_ROLES.has(r)) ?? "wfs";
-        const attributeConfig: NodeAttributeConfig = {
-            endpointUrl: asset.href,
-            type: adapterType,
-        };
-        if (asset.type) attributeConfig.mimeType = asset.type;
 
-        const result: AttributeRole = {
+        return {
             id: ctx.assetKey,
-            category: "attribute",
+            category: "data",
             label: asset.title ?? ctx.assetKey,
             sourceUrl: asset.href,
-            attributeConfig,
+            ...(asset.type ? { mimeType: asset.type } : {}),
+            endpointUrl: asset.href,
+            role: LayerRoles.of(adapterRole),
         };
-        if (asset.type) result.mimeType = asset.type;
-        return result;
     }
 }
