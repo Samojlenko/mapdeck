@@ -10,13 +10,19 @@ import {
 } from "@core/framework/types";
 import type { LayerAdapterFactory } from "@core/domain/adapters/layer/LayerAdapterFactory";
 import type { Protocol, ProtocolFeatureInfoParams } from "../Protocol";
+import { EMPTY_FEATURE_INFO } from "../Protocol";
 
 export class VectorTileProtocol implements Protocol {
     readonly id = "vector-tile";
-    readonly label = "Vector Tile";
+    readonly label: string;
     readonly roles = [LayerRoles.VECTOR];
 
-    constructor(private readonly layerAdapterFactory: LayerAdapterFactory) {}
+    constructor(
+        private readonly layerAdapterFactory: LayerAdapterFactory,
+        label: string,
+    ) {
+        this.label = label;
+    }
 
     createMapLayer(
         _role: LayerRole,
@@ -58,7 +64,7 @@ export class VectorTileProtocol implements Protocol {
         );
 
         if (features.length === 0) {
-            return { noFeatures: "No features found" };
+            return EMPTY_FEATURE_INFO;
         }
 
         const feature = features[0]!;

@@ -42,18 +42,6 @@ export interface CollectParams {
 }
 
 /**
- * Interface for feature providers
- */
-export interface FeatureProvider {
-    /**
-     * Collect features at the given screen coordinates.
-     * May be sync (Deck.gl, Maplibre) or async (WMS).
-     * Receives AbortSignal for cancellation support.
-     */
-    collect(params: CollectParams): Feature[] | Promise<Feature[]>;
-}
-
-/**
  * A group of features from the same layer
  */
 export interface FeatureGroup {

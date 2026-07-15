@@ -1,10 +1,3 @@
-/**
- * STAC Module implementation
- * Registers the STAC adapter with the SourceAdapterFactory.
- * Does not manage settings — the data source URL is configured
- * via the layer-tree widget settings.
- */
-
 import { type Module } from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
 import { STACTreeAdapter } from "../adapter/STACTreeAdapter";
@@ -39,8 +32,8 @@ export class STACModule implements Module {
 
         const roleRegistry = createDefaultRoleRegistry();
         const adapter = new STACTreeAdapter(
-            this.rootStore.layerConfigRegistry,
             roleRegistry,
+            this.rootStore.protocolRegistry,
         );
         await this.rootStore.sourceAdapterFactory.register("stac", adapter);
 
@@ -57,7 +50,6 @@ function createDefaultRoleRegistry(): RoleResolverRegistry {
     registry.register(new VectorTileRoleResolver());
     registry.register(new GeoJsonRoleResolver());
     registry.register(new PointCloudRoleResolver());
-    // Not yet implemented: TiledAssetsRoleResolver — tracked in PLAN.md
     return registry;
 }
 

@@ -54,8 +54,10 @@ export interface RasterLayerConfig extends LayerConfigBase {
      */
     version?: string;
 
-    /** Coordinate reference system declared by a WMS GetMap URL. */
+    /** Coordinate reference system declared by a WMS GetMap URL (WMS 1.1). */
     srs?: string;
+    /** Coordinate reference system declared by a WMS GetMap URL (WMS 1.3). */
+    crs?: string;
 
     /**
      * Paint properties for raster layers

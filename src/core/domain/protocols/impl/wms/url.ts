@@ -4,21 +4,23 @@
  */
 
 import type { ParsedWmsUrl, WmsOptions } from "@core/framework/types/ogc/wms";
+import { parseUrl } from "../url";
 
 /**
  * Parse a WMS URL into its components.
- * Extracts the clean base URL, LAYERS, and STYLES parameters.
+ * Extracts the clean base URL, LAYERS, STYLES, VERSION, SRS, and CRS.
  */
 export function parseWmsUrl(url: string): ParsedWmsUrl {
-    try {
-        const parsed = new URL(url);
-        const layers = parsed.searchParams.get("LAYERS") ?? "";
-        const styles = parsed.searchParams.get("STYLES") ?? "";
-        parsed.search = "";
-        return { baseUrl: parsed.toString(), layers, styles };
-    } catch {
-        return { baseUrl: url, layers: "", styles: "" };
-    }
+    const { baseUrl, params } = parseUrl(url);
+    const result: ParsedWmsUrl = {
+        baseUrl,
+        layers: params["LAYERS"] ?? "",
+        styles: params["STYLES"] ?? "",
+    };
+    if (params["VERSION"]) result.version = params["VERSION"];
+    if (params["SRS"]) result.srs = params["SRS"];
+    if (params["CRS"]) result.crs = params["CRS"];
+    return result;
 }
 
 /**
@@ -62,28 +64,4 @@ export function buildWmsTileUrl(
     return `${base}?${q.join("&")}`;
 }
 
-/**
- * Build a WMS GetFeatureInfo URL for a group of layers.
- */
-export function buildWmsFeatureInfoUrl(
-    baseUrl: string,
-    layers: string,
-    options: WmsOptions = {},
-): string {
-    const base = parseWmsUrl(baseUrl).baseUrl;
-    const version = options.version ?? "1.3.0";
-    const format = options.format ?? "application/json";
-    const q = [
-        `SERVICE=WMS`,
-        `VERSION=${version}`,
-        `REQUEST=GetFeatureInfo`,
-        `LAYERS=${encodeURIComponent(layers)}`,
-        `STYLES=`,
-        `FORMAT=image/png`,
-        `TRANSPARENT=TRUE`,
-        `QUERY_LAYERS=${encodeURIComponent(layers)}`,
-        `INFO_FORMAT=${encodeURIComponent(format)}`,
-        `FEATURE_COUNT=50`,
-    ];
-    return `${base}?${q.join("&")}`;
-}
+

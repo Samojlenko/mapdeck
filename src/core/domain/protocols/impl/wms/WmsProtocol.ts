@@ -14,14 +14,16 @@ import {
 } from "@core/framework/types";
 import type { LayerAdapterFactory } from "@core/domain/adapters/layer/LayerAdapterFactory";
 import {
-    buildWmsFeatureInfoUrl,
     buildWmsTileUrl,
     getWmsLayerName,
     groupVisibleWmsNodes,
     parseWmsUrl,
-} from "@core/shared/protocols/ogc/wms";
-import { parseFeature } from "@core/shared/protocols/ogc/wfs/parser";
-import type { Protocol, ProtocolFeatureInfoParams } from "../Protocol";
+} from ".";
+import { prepareWmsFeatureInfoParams } from "./params";
+import { buildUrl } from "../url";
+import { parseFeature } from "../wfs/parser";
+import type { Protocol, ProtocolFeatureInfoParams } from "../../Protocol";
+import { EMPTY_FEATURE_INFO } from "../../Protocol";
 
 interface WmsGroupInput {
     id: string;
@@ -31,10 +33,15 @@ interface WmsGroupInput {
 /** Protocol implementation for WMS GetMap and GetFeatureInfo requests. */
 export class WmsProtocol implements Protocol {
     readonly id = "wms";
-    readonly label = "Web Map Service";
+    readonly label: string;
     readonly roles = [LayerRoles.RASTER];
 
-    constructor(private readonly layerAdapterFactory: LayerAdapterFactory) {}
+    constructor(
+        private readonly layerAdapterFactory: LayerAdapterFactory,
+        label: string,
+    ) {
+        this.label = label;
+    }
 
     createMapLayer(
         _role: LayerRole,
@@ -85,10 +92,35 @@ export class WmsProtocol implements Protocol {
         params: ProtocolFeatureInfoParams,
     ): Promise<Record<string, unknown>> {
         const config = getWmsConfig(params.descriptor);
-        const baseUrl = parseWmsUrl(config.url).baseUrl;
-        const layers = getWmsLayerName(config.url, config.layers);
-        const version = config.version ?? "1.3.0";
-        const url = buildFeatureInfoUrl(baseUrl, layers, version, params);
+        const { baseUrl } = parseWmsUrl(config.url);
+        const layerName = getWmsLayerName(config.url, config.layers);
+        const layerVersion = config.version ?? "1.3.0";
+
+        const canvas = params.map.getCanvas();
+        const bounds = params.map.getBounds();
+        const west = Math.max(-180, Math.min(180, bounds.getWest()));
+        const east = Math.max(-180, Math.min(180, bounds.getEast()));
+        const south = Math.max(-90, Math.min(90, bounds.getSouth()));
+        const north = Math.max(-90, Math.min(90, bounds.getNorth()));
+        const clickLngLat = params.map.unproject([params.screenX, params.screenY]);
+        const screenX = Math.round(
+            ((clickLngLat.lng - west) / (east - west)) * canvas.clientWidth,
+        );
+        const screenY = Math.round(
+            ((north - clickLngLat.lat) / (north - south)) * canvas.clientHeight,
+        );
+
+        const wmsParams = prepareWmsFeatureInfoParams({
+            layers: layerName,
+            version: layerVersion,
+            width: canvas.clientWidth,
+            height: canvas.clientHeight,
+            screenX,
+            screenY,
+            bbox: { west, south, east, north },
+        });
+
+        const url = buildUrl(baseUrl, wmsParams);
         const response = await globalThis.fetch(
             url,
             params.signal ? { signal: params.signal } : {},
@@ -108,11 +140,7 @@ function createWmsConfig(
     sourceUrl: string,
     config: LayerConfig,
 ): RasterLayerConfig {
-    const layers = getWmsQueryParam(sourceUrl, "LAYERS");
-    const version = getWmsQueryParam(sourceUrl, "VERSION");
-    const srs =
-        getWmsQueryParam(sourceUrl, "SRS") ??
-        getWmsQueryParam(sourceUrl, "CRS");
+    const { layers, version, srs, crs } = parseWmsUrl(sourceUrl);
     const result: RasterLayerConfig = isRasterConfig(config)
         ? {
               ...config,
@@ -129,19 +157,9 @@ function createWmsConfig(
     if (layers) result.layers = layers;
     if (version) result.version = version;
     if (srs) result.srs = srs;
+    if (crs) result.crs = crs;
 
     return result;
-}
-
-function getWmsQueryParam(url: string, name: string): string | undefined {
-    try {
-        const value = [...new URL(url).searchParams.entries()].find(
-            ([key]) => key.toUpperCase() === name,
-        )?.[1];
-        return value || undefined;
-    } catch {
-        return undefined;
-    }
 }
 
 function collectWmsInputs(snapshot: SnapshotItem[]): WmsGroupInput[] {
@@ -217,76 +235,7 @@ function isWmsDescriptor(
     );
 }
 
-function buildFeatureInfoUrl(
-    baseUrl: string,
-    layers: string,
-    version: string,
-    params: ProtocolFeatureInfoParams,
-): string {
-    const parsedUrl = new URL(buildWmsFeatureInfoUrl(baseUrl, layers, { version }));
-    const canvas = params.map.getCanvas();
-    const bounds = params.map.getBounds();
-    const west = Math.max(-180, Math.min(180, bounds.getWest()));
-    const east = Math.max(-180, Math.min(180, bounds.getEast()));
-    const south = Math.max(-90, Math.min(90, bounds.getSouth()));
-    const north = Math.max(-90, Math.min(90, bounds.getNorth()));
-    const clickLngLat = params.map.unproject([params.screenX, params.screenY]);
-    const screenX = Math.round(
-        ((clickLngLat.lng - west) / (east - west)) * canvas.clientWidth,
-    );
-    const screenY = Math.round(
-        ((north - clickLngLat.lat) / (north - south)) * canvas.clientHeight,
-    );
 
-    parsedUrl.searchParams.set("WIDTH", String(canvas.clientWidth));
-    parsedUrl.searchParams.set("HEIGHT", String(canvas.clientHeight));
-    setFeatureInfoCoordinates(parsedUrl.searchParams, {
-        version,
-        screenX,
-        screenY,
-        west,
-        south,
-        east,
-        north,
-    });
-
-    return parsedUrl.toString();
-}
-
-function setFeatureInfoCoordinates(
-    queryParams: URLSearchParams,
-    params: {
-        version: string;
-        screenX: number;
-        screenY: number;
-        west: number;
-        south: number;
-        east: number;
-        north: number;
-    },
-): void {
-    const usesSrs =
-        params.version.startsWith("1.1") || params.version.startsWith("1.0");
-
-    if (usesSrs) {
-        queryParams.set("X", String(params.screenX));
-        queryParams.set("Y", String(params.screenY));
-        queryParams.set("SRS", "EPSG:4326");
-        queryParams.set(
-            "BBOX",
-            `${params.west},${params.south},${params.east},${params.north}`,
-        );
-        return;
-    }
-
-    queryParams.set("I", String(params.screenX));
-    queryParams.set("J", String(params.screenY));
-    queryParams.set("CRS", "EPSG:4326");
-    queryParams.set(
-        "BBOX",
-        `${params.south},${params.west},${params.north},${params.east}`,
-    );
-}
 
 async function parseFeatureInfoResponse(
     response: Response,
@@ -316,7 +265,7 @@ function parseFeatureInfoJson(json: unknown): Record<string, unknown> {
 
     const features = (json as Record<string, unknown>).features;
     if (!Array.isArray(features) || features.length === 0) {
-        return { noFeatures: "No features found in WMS response" };
+        return EMPTY_FEATURE_INFO;
     }
 
     const attributes: Record<string, unknown> = {};

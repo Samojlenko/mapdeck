@@ -1,14 +1,27 @@
-import type { NodeCapability } from "@core/framework/types";
-import type { LayerConfigRegistry } from "@core/domain/adapters";
+import type {
+    LayerRole,
+    DataTable,
+    Download,
+} from "@core/framework/types";
 import type { STACAsset } from "../types";
 
 export interface ResolveContext {
   readonly assetKey: string;
-  readonly registry: LayerConfigRegistry;
   readonly properties?: Record<string, unknown>;
   readonly itemBbox?: readonly number[];
   readonly stac_extensions?: readonly string[];
 }
+
+export interface ResolvedRenderCapability {
+    category: "render";
+    role: LayerRole;
+    sourceUrl: string;
+}
+
+export type ResolveResult =
+    | ResolvedRenderCapability
+    | DataTable
+    | Download;
 
 export interface IRoleResolver {
   /**
@@ -29,5 +42,5 @@ export interface IRoleResolver {
    * Creates a node capability. Called only if canResolved returned true.
    * Pure function: no side effects, no argument mutation.
    */
-  resolve(asset: STACAsset, ctx: ResolveContext): NodeCapability;
+  resolve(asset: STACAsset, ctx: ResolveContext): ResolveResult;
 }

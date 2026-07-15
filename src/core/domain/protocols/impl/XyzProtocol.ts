@@ -14,10 +14,15 @@ import type { Protocol } from "../Protocol";
 /** Protocol implementation for XYZ raster tile URL templates. */
 export class XyzProtocol implements Protocol {
     readonly id = "xyz";
-    readonly label = "XYZ tiles";
+    readonly label: string;
     readonly roles = [LayerRoles.RASTER];
 
-    constructor(private readonly layerAdapterFactory: LayerAdapterFactory) {}
+    constructor(
+        private readonly layerAdapterFactory: LayerAdapterFactory,
+        label: string,
+    ) {
+        this.label = label;
+    }
 
     createMapLayer(
         _role: LayerRole,

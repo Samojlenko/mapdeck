@@ -115,3 +115,8 @@ export interface Protocol {
     params: ProtocolFeatureInfoParams,
   ): Promise<Record<string, unknown>>;
 }
+
+/** Sentinel returned by getFeatureInfo when no features are found. */
+export const EMPTY_FEATURE_INFO: Record<string, unknown> = {
+  _empty: true,
+};

@@ -12,19 +12,25 @@ import {
     type MapLayer,
 } from "@core/framework/types";
 import type { LayerAdapterFactory } from "@core/domain/adapters/layer/LayerAdapterFactory";
-import { fetchOgcFeaturesPage } from "@core/shared/protocols/ogc/features";
-import type { Protocol, ProtocolFeatureInfoParams } from "../Protocol";
+import {
+    buildWfsUrl,
+    fetchWfsPageAsRows,
+    parseGeoJsonFeatures,
+} from ".";
+import type { Protocol, ProtocolFeatureInfoParams } from "../../Protocol";
+import { EMPTY_FEATURE_INFO } from "../../Protocol";
 
-const RATE_LIMIT_MS = 1000;
+export class WfsProtocol implements Protocol {
+    readonly id = "wfs";
+    readonly label: string;
+    readonly roles = [LayerRoles.GEOJSON, LayerRoles.of("wfs")];
 
-export class OgcFeaturesProtocol implements Protocol {
-    readonly id = "ogc-features";
-    readonly label = "OGC API Features";
-    readonly roles = [LayerRoles.GEOJSON, LayerRoles.of("ogc-features")];
-
-    private lastRequestTime = 0;
-
-    constructor(private readonly layerAdapterFactory: LayerAdapterFactory) {}
+    constructor(
+        private readonly layerAdapterFactory: LayerAdapterFactory,
+        label: string,
+    ) {
+        this.label = label;
+    }
 
     createMapLayer(
         _role: LayerRole,
@@ -62,24 +68,20 @@ export class OgcFeaturesProtocol implements Protocol {
         request: AttributeFetchRequest,
         signal?: AbortSignal,
     ): Promise<AttributeFetchResult> {
-        const now = Date.now();
-        const elapsed = now - this.lastRequestTime;
-        if (elapsed < RATE_LIMIT_MS) {
-            const delay = RATE_LIMIT_MS - elapsed;
-            await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-        this.lastRequestTime = Date.now();
-
-        const result = await fetchOgcFeaturesPage(
+        const result = await fetchWfsPageAsRows(
             {
                 url: config.endpointUrl,
-                offset: request.startIndex ?? 0,
-                limit: request.maxFeatures ?? 50,
+                version: config.extraParams?.version ?? "2.0.0",
+                startIndex: request.startIndex ?? 0,
+                maxFeatures: request.maxFeatures ?? 50,
+                sortBy: request.sortBy,
+                sortDirection: request.sortDirection,
+                extraParams: config.extraParams,
             },
             signal ?? request.signal,
         );
 
-        return { rows: result.features, totalFeatures: result.totalFeatures };
+        return { rows: result.rows, totalFeatures: result.totalFeatures };
     }
 
     async getFeatureInfo(
@@ -93,38 +95,33 @@ export class OgcFeaturesProtocol implements Protocol {
             params.lat + buffer,
         ].join(",");
 
-        const url = new URL(params.descriptor.sourceUrl);
-        url.searchParams.set("bbox", bbox);
-        url.searchParams.set("limit", "1");
+        const url = buildWfsUrl({
+            url: params.descriptor.sourceUrl,
+            maxFeatures: 1,
+            srsName: "EPSG:4326",
+            bbox,
+        });
 
         const response = await globalThis.fetch(
-            url.toString(),
+            url,
             params.signal ? { signal: params.signal } : {},
         );
 
         if (!response.ok) {
             throw new Error(
-                `OGC Features returned ${response.status} ${response.statusText}`,
+                `WFS GetFeature returned ${response.status} ${response.statusText}`,
             );
         }
 
-        const data: unknown = await response.json();
+        const json: unknown = await response.json();
+        const features = parseGeoJsonFeatures(
+            (json ?? {}) as Record<string, unknown>,
+        );
 
-        if (
-            !data ||
-            typeof data !== "object" ||
-            !("features" in data) ||
-            !Array.isArray((data as Record<string, unknown>).features)
-        ) {
-            return { noFeatures: "No features found" };
+        if (features.length === 0) {
+            return EMPTY_FEATURE_INFO;
         }
 
-        const fc = data as { features: Array<{ properties?: Record<string, unknown> | null }> };
-
-        if (fc.features.length === 0) {
-            return { noFeatures: "No features found" };
-        }
-
-        return fc.features[0]!.properties ?? {};
+        return features[0]!.properties;
     }
 }

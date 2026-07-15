@@ -13,10 +13,15 @@ import type { Protocol } from "../Protocol";
 
 export class GeoJsonTiledProtocol implements Protocol {
     readonly id = "geojson-tiled";
-    readonly label = "GeoJSON Tiled";
+    readonly label: string;
     readonly roles = [LayerRoles.GEOJSON];
 
-    constructor(private readonly layerAdapterFactory: LayerAdapterFactory) {}
+    constructor(
+        private readonly layerAdapterFactory: LayerAdapterFactory,
+        label: string,
+    ) {
+        this.label = label;
+    }
 
     createMapLayer(
         _role: LayerRole,

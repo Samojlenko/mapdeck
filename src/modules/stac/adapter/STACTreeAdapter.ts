@@ -10,7 +10,7 @@ import { type STACConfig } from "../core/STACConfig";
 import { STACClient } from "../core/STACClient";
 import { STACCache } from "../core/STACCache";
 import { STACEntityMapper } from "../mapping/STACEntityMapper";
-import type { LayerConfigRegistry } from "@core/domain/adapters";
+import type { ProtocolRegistry } from "@core/domain/protocols";
 import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { resolveBaseUrl, filterLinksByRel } from "../utils/url";
 import {
@@ -33,8 +33,8 @@ export class STACTreeAdapter implements SourceAdapter {
     private state: InitializedState | null = null;
 
     constructor(
-        private readonly layerConfigRegistry: LayerConfigRegistry,
         readonly roleRegistry: RoleResolverRegistry,
+        private readonly protocolRegistry: ProtocolRegistry,
     ) {}
 
     initialize(config: Record<string, unknown>): void {
@@ -47,7 +47,7 @@ export class STACTreeAdapter implements SourceAdapter {
             client: new STACClient(stacConfig),
             mapper: new STACEntityMapper(
                 cache,
-                this.layerConfigRegistry,
+                this.protocolRegistry,
                 this.roleRegistry,
             ),
         };

@@ -1,7 +1,6 @@
 import { LayerRoles } from "@core/framework/types";
 import type { RenderUnit, SnapshotItem } from "@core/framework/types";
-import type { LayerAdapterFactory } from "@core/domain/adapters";
-import { applyWmsGrouping } from "@core/shared/protocols/ogc/wms/grouper";
+import type { ProtocolRegistry } from "@core/domain/protocols";
 
 /**
  * Build the desired set of render units from the current layer snapshot.
@@ -9,7 +8,7 @@ import { applyWmsGrouping } from "@core/shared/protocols/ogc/wms/grouper";
  */
 export function buildDesiredRenderUnits(
     snapshot: SnapshotItem[],
-    adapterFactory: LayerAdapterFactory,
+    protocolRegistry: ProtocolRegistry,
 ): Map<string, RenderUnit> {
     const desired = new Map<string, RenderUnit>();
 
@@ -17,12 +16,13 @@ export function buildDesiredRenderUnits(
         if (!item.visible || !item.descriptor) continue;
 
         const role = item.descriptor.role;
-        if (!adapterFactory.has(role)) continue;
+        const protocol = protocolRegistry.getByRole(role);
+        if (!protocol) continue;
 
         desired.set(item.id, {
             id: item.id,
             nodeIds: [item.id],
-            adapter: adapterFactory.get(role),
+            adapter: protocol.getAdapter(role),
             descriptor: item.descriptor,
         });
     }
@@ -33,23 +33,18 @@ export function buildDesiredRenderUnits(
 /**
  * Build grouped render units from the current layer snapshot.
  *
- * Starts with individual units via buildDesiredRenderUnits, then applies
- * grouping strategies. Each strategy removes individual units from the
- * result and replaces them with grouped units.
- *
- * To add a new grouping strategy:
- *   1. Create a pure grouping function (like groupVisibleWmsNodes)
- *   2. Add an applyXxxGrouping call below
+ * Starts with individual units via buildDesiredRenderUnits, then delegates
+ * grouping to each registered protocol via groupRenderUnits.
  */
 export function buildGroupedRenderUnits(
     snapshot: SnapshotItem[],
-    adapterFactory: LayerAdapterFactory,
+    protocolRegistry: ProtocolRegistry,
 ): Map<string, RenderUnit> {
-    const result = buildDesiredRenderUnits(snapshot, adapterFactory);
+    const result = buildDesiredRenderUnits(snapshot, protocolRegistry);
 
-    applyWmsGrouping(snapshot, adapterFactory, result);
-
-    // Future: applyVectorTileGrouping(snapshot, adapterFactory, result);
+    for (const protocol of protocolRegistry.getAll()) {
+        protocol.groupRenderUnits?.(result, snapshot);
+    }
 
     return result;
 }

@@ -50,4 +50,16 @@ export const coreTranslations: Record<
             "widgetGrid.closeLabel": "Close {name}",
         },
     },
+    protocols: {
+        en: {
+            xyz: "XYZ tiles",
+            wms: "Web Map Service",
+            cog: "Cloud Optimized GeoTIFF",
+            "vector-tile": "Vector Tile",
+            "geojson-tiled": "GeoJSON Tiled",
+            copc: "Cloud Optimized Point Cloud",
+            wfs: "Web Feature Service",
+            "ogc-features": "OGC API Features",
+        },
+    },
 };

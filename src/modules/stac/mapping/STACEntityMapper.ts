@@ -8,10 +8,10 @@ import {
     type NodeCapabilities,
     type LayerNodeCapabilities,
 } from "@core/framework/types";
+import type { ProtocolRegistry } from "@core/domain/protocols";
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
 import { mapAssetsToNodeCapabilities } from "./RoleMapper";
-import type { LayerConfigRegistry } from "@core/domain/adapters";
 import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { Bbox, flattenTo2D } from "@core/shared/geo";
 import type { STACCache } from "../core/STACCache";
@@ -19,7 +19,7 @@ import type { STACCache } from "../core/STACCache";
 export class STACEntityMapper {
     constructor(
         private cache: STACCache,
-        private layerConfigRegistry: LayerConfigRegistry,
+        private protocolRegistry: ProtocolRegistry,
         private roleRegistry: RoleResolverRegistry,
     ) {}
 
@@ -32,11 +32,7 @@ export class STACEntityMapper {
         );
 
         const capabilities: NodeCapabilities = collection.assets
-            ? mapAssetsToNodeCapabilities(
-                  collection.assets,
-                  this.roleRegistry,
-                  this.layerConfigRegistry,
-              )
+            ? mapAssetsToNodeCapabilities(collection.assets, this.roleRegistry, this.protocolRegistry)
             : { downloads: [] };
 
         const childLinkCount = collection.links.filter(
@@ -66,9 +62,8 @@ export class STACEntityMapper {
         const capabilities = mapAssetsToNodeCapabilities(
             item.assets,
             this.roleRegistry,
-            this.layerConfigRegistry,
-            item.properties,
-            item.bbox,
+            this.protocolRegistry,
+            { properties: item.properties, itemBbox: item.bbox },
         );
 
         const hasBbox = item.bbox && item.bbox.length >= 4;
@@ -81,12 +76,19 @@ export class STACEntityMapper {
             return this.createPlaceholderOrSkip(item, hasBbox, "no assets");
         }
 
-        const layerCapabilities = this.resolveCapabilityConflicts(capabilities);
+        const layerCapabilities =
+            this.resolveCapabilityConflicts(capabilities);
         if (!layerCapabilities) {
-            return this.createPlaceholderOrSkip(item, hasBbox, "no map layer");
+            return this.createPlaceholderOrSkip(
+                item,
+                hasBbox,
+                "no map layer",
+            );
         }
 
-        const flattenedBbox = hasBbox ? flattenTo2D(new Bbox(item.bbox)) : null;
+        const flattenedBbox = hasBbox
+            ? flattenTo2D(new Bbox(item.bbox))
+            : null;
 
         const layerNode: LayerNode = {
             id: item.id,
@@ -126,10 +128,6 @@ export class STACEntityMapper {
         return null;
     }
 
-    /**
-     * Returns a layer's rendering and table capabilities, or null when it has
-     * no map layer capability and must be represented as a placeholder.
-     */
     private resolveCapabilityConflicts(
         capabilities: NodeCapabilities,
     ): LayerNodeCapabilities | null {
@@ -143,14 +141,15 @@ export class STACEntityMapper {
         return result;
     }
 
-    /** Creates a placeholder layer node when an item has an extent but no map layer. */
     private createPlaceholderOrSkip(
         item: STACItem,
         hasBbox: boolean,
         reason: string,
     ): TreeNode | null {
         if (!hasBbox) {
-            logger.debug(`Item ${item.id} has no bbox and ${reason}, skipping`);
+            logger.debug(
+                `Item ${item.id} has no bbox and ${reason}, skipping`,
+            );
             return null;
         }
         const flattenedBbox =

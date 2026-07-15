@@ -11,16 +11,20 @@ import {
 import type { LayerAdapterFactory } from "@core/domain/adapters/layer/LayerAdapterFactory";
 import type { DeckOverlayManager } from "@core/domain/overlay";
 import type { Protocol, ProtocolFeatureInfoParams } from "../Protocol";
+import { EMPTY_FEATURE_INFO } from "../Protocol";
 
 export class CopcProtocol implements Protocol {
     readonly id = "copc";
-    readonly label = "Cloud Optimized Point Cloud";
+    readonly label: string;
     readonly roles = [LayerRoles.POINT_CLOUD];
 
     constructor(
         private readonly layerAdapterFactory: LayerAdapterFactory,
         private readonly overlayManager: DeckOverlayManager,
-    ) {}
+        label: string,
+    ) {
+        this.label = label;
+    }
 
     createMapLayer(
         _role: LayerRole,
@@ -64,7 +68,7 @@ export class CopcProtocol implements Protocol {
         );
 
         if (results.length === 0) {
-            return { noFeatures: "No features found" };
+            return EMPTY_FEATURE_INFO;
         }
 
         const info = results[0]!;

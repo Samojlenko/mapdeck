@@ -75,7 +75,7 @@ export class LayerManager {
             const snapshot = this.rootStore.treeStore.layerSnapshot;
             const desired = buildGroupedRenderUnits(
                 snapshot,
-                this.rootStore.layerAdapterFactory,
+                this.rootStore.protocolRegistry,
             );
 
             this._removeStaleUnits(desired);

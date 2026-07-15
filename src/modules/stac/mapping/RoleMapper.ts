@@ -3,37 +3,41 @@ import type {
     MapLayer,
     DataTable,
     Download,
+    LayerRole,
 } from "@core/framework/types";
-import { LayerRoles } from "@core/framework/types";
-import type { LayerConfigRegistry } from "@core/domain/adapters";
 import { logger } from "@core/shared/diagnostics/logger";
+import type { ProtocolRegistry } from "@core/domain/protocols";
 import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
-import type { ResolveContext } from "../roles/IRoleResolver";
+import type {
+    ResolveContext,
+    ResolvedRenderCapability,
+} from "../roles/IRoleResolver";
 import type { STACAsset } from "../types";
-import { resolveOgcFeaturesUrl } from "../roles/resolvers/GeoJsonRoleResolver";
 
-export function mapAssetsToNodeCapabilities( // eslint-disable-line max-params
+interface MapAssetsOptions {
+    properties?: Record<string, unknown>;
+    itemBbox?: readonly number[];
+    stac_extensions?: readonly string[];
+}
+
+export function mapAssetsToNodeCapabilities(
     assets: Readonly<Record<string, STACAsset>>,
     registry: RoleResolverRegistry,
-    layerConfigRegistry: LayerConfigRegistry,
-    properties?: Record<string, unknown>,
-    itemBbox?: readonly number[],
-    stac_extensions?: readonly string[],
+    protocolRegistry: ProtocolRegistry,
+    options?: MapAssetsOptions,
 ): NodeCapabilities {
     const mapLayerCandidates: MapLayer[] = [];
     const dataTableCandidates: DataTable[] = [];
     const downloads: Download[] = [];
 
     for (const [assetKey, asset] of Object.entries(assets)) {
-        const collected = resolveSingleAsset(
+        const collected = resolveSingleAsset({
             assetKey,
             asset,
             registry,
-            layerConfigRegistry,
-            properties,
-            itemBbox,
-            stac_extensions,
-        );
+            protocolRegistry,
+            ...(options !== undefined ? { options } : {}),
+        });
         if (!collected) continue;
         if (collected.mapLayer) mapLayerCandidates.push(collected.mapLayer);
         if (collected.dataTable) dataTableCandidates.push(collected.dataTable);
@@ -58,75 +62,100 @@ interface SingleAssetCapabilities {
     download?: Download;
 }
 
-function resolveSingleAsset( // eslint-disable-line max-params
-    assetKey: string,
-    asset: STACAsset,
-    registry: RoleResolverRegistry,
-    layerConfigRegistry: LayerConfigRegistry,
-    properties?: Record<string, unknown>,
-    itemBbox?: readonly number[],
-    stac_extensions?: readonly string[],
-): SingleAssetCapabilities | null {
+interface ResolveSingleParams {
+    assetKey: string;
+    asset: STACAsset;
+    registry: RoleResolverRegistry;
+    protocolRegistry: ProtocolRegistry;
+    options?: MapAssetsOptions;
+}
+
+function resolveSingleAsset(params: ResolveSingleParams): SingleAssetCapabilities | null {
+    const { assetKey, asset, registry, protocolRegistry, options } = params;
     const ctx: ResolveContext = {
         assetKey,
-        registry: layerConfigRegistry,
-        ...(properties !== undefined ? { properties } : {}),
-        ...(itemBbox !== undefined ? { itemBbox } : {}),
-        ...(stac_extensions !== undefined ? { stac_extensions } : {}),
+        ...(options?.properties !== undefined
+            ? { properties: options.properties }
+            : {}),
+        ...(options?.itemBbox !== undefined
+            ? { itemBbox: options.itemBbox }
+            : {}),
+        ...(options?.stac_extensions !== undefined
+            ? { stac_extensions: options.stac_extensions }
+            : {}),
     };
 
     const capability = registry.resolve(asset, ctx);
     if (!capability) return null;
 
     if (capability.category === "render") {
-        return resolveMapLayerWithDataTable(capability, asset, ctx);
+        return resolveMapLayer(capability, assetKey, asset, protocolRegistry);
     }
 
-    switch (capability.category) {
-        case "data":
-            return { dataTable: capability };
-        case "report":
-            return { download: capability };
+    if (capability.category === "data") {
+        return { dataTable: capability };
     }
+
+    return { download: capability };
 }
 
-/**
- * When a GeoJSON map layer originates from an OGC API Features endpoint,
- * also expose the same source as a data table.
- */
-function resolveMapLayerWithDataTable(
-    mapLayer: MapLayer,
+function resolveMapLayer(
+    resolved: ResolvedRenderCapability,
+    assetKey: string,
     asset: STACAsset,
-    ctx: ResolveContext,
+    protocolRegistry: ProtocolRegistry,
 ): SingleAssetCapabilities {
-    const hasOgcRole = asset.roles?.includes("ogc") ?? false;
-    const isGeoJsonMapLayer = mapLayer.render.role === LayerRoles.GEOJSON;
+    const protocol = protocolRegistry.getByRole(resolved.role);
+    if (!protocol) {
+        logger.warn(
+            `[STAC] No protocol for role "${resolved.role}" (asset: ${assetKey})`,
+        );
+        return {};
+    }
 
-    if (!hasOgcRole || !isGeoJsonMapLayer) {
+    const mapLayer = protocol.createMapLayer(
+        resolved.role,
+        resolved.sourceUrl,
+        { role: resolved.role } as never,
+    );
+
+    if (asset.title) {
+        mapLayer.label = asset.title;
+    }
+    if (asset.type) {
+        mapLayer.mimeType = asset.type;
+    }
+
+    const hasOgcRole = asset.roles?.includes("ogc") ?? false;
+    const roleStr = resolved.role;
+    const isGeoJson = roleStr === "geojson" || roleStr === "ogc-features";
+
+    if (!hasOgcRole || !isGeoJson) {
         return { mapLayer };
     }
 
-    const itemsUrl = resolveOgcFeaturesUrl(asset.href);
-
     return {
         mapLayer,
-        dataTable: {
-            id: ctx.assetKey,
-            category: "data",
-            label: asset.title ?? ctx.assetKey,
-            sourceUrl: itemsUrl,
-            ...(asset.type ? { mimeType: asset.type } : {}),
-            endpointUrl: itemsUrl,
-            role: LayerRoles.of("ogc-features"),
-        },
+        dataTable: buildDataTable(assetKey, asset, resolved),
     };
 }
 
-/**
- * If a raster or point-cloud map layer exists, vector and GeoJSON candidates
- * degrade to data tables. If no data table exists yet, the first degraded
- * vector or GeoJSON candidate takes its place.
- */
+function buildDataTable(
+    assetKey: string,
+    asset: STACAsset,
+    resolved: ResolvedRenderCapability,
+): DataTable {
+    return {
+        id: assetKey,
+        category: "data",
+        label: asset.title ?? assetKey,
+        sourceUrl: resolved.sourceUrl,
+        ...(asset.type ? { mimeType: asset.type } : {}),
+        endpointUrl: resolved.sourceUrl,
+        role: resolved.role,
+    };
+}
+
 function resolveMapLayerPriority(
     mapLayerCandidates: MapLayer[],
     dataTableCandidates: DataTable[],
@@ -138,10 +167,7 @@ function resolveMapLayerPriority(
         return { mapLayer: undefined, dataTable: dataTableCandidates[0] };
     }
 
-    const rasterOrPointCloudRoles = new Set([
-        LayerRoles.RASTER,
-        LayerRoles.POINT_CLOUD,
-    ]);
+    const rasterOrPointCloudRoles = new Set(["raster", "point-cloud"]);
 
     const rasterMapLayers = mapLayerCandidates.filter((candidate): boolean =>
         rasterOrPointCloudRoles.has(candidate.render.role),
@@ -179,7 +205,6 @@ function resolveMapLayerPriority(
     };
 }
 
-/** Converts a vector or GeoJSON map layer into a data table. */
 function degradeToDataTable(mapLayer: MapLayer): DataTable {
     return {
         id: mapLayer.id,
@@ -188,6 +213,6 @@ function degradeToDataTable(mapLayer: MapLayer): DataTable {
         sourceUrl: mapLayer.render.sourceUrl,
         ...(mapLayer.mimeType ? { mimeType: mapLayer.mimeType } : {}),
         endpointUrl: mapLayer.render.sourceUrl,
-        role: LayerRoles.of(mapLayer.render.role),
+        role: mapLayer.render.role as LayerRole,
     };
 }

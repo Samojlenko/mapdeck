@@ -57,25 +57,5 @@ export {
     getThemeColor,
 } from "./ui";
 
-// OGC WFS
-export type {
-    WfsFeature,
-    WfsResponse,
-    WfsRequestParams,
-} from "./protocols/ogc/wfs";
-export { fetchWfsFeatures, fetchWfsPageAsRows } from "./protocols/ogc/wfs";
-
-// OGC WMS
-export {
-    parseWmsUrl,
-    getWmsLayerName,
-    buildWmsTileUrl,
-    buildWmsFeatureInfoUrl,
-} from "./protocols/ogc/wms";
-export {
-    groupVisibleWmsNodes,
-    applyWmsGrouping,
-} from "./protocols/ogc/wms/grouper";
-
 // Tile coordinates
 export { tileToBBOX, tileToQuadkey, getTilesForBounds } from "./tile";

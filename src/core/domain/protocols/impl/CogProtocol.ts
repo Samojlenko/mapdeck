@@ -14,10 +14,15 @@ import type { Protocol } from "../Protocol";
 /** Protocol implementation for Cloud Optimized GeoTIFF endpoints. */
 export class CogProtocol implements Protocol {
     readonly id = "cog";
-    readonly label = "Cloud Optimized GeoTIFF";
+    readonly label: string;
     readonly roles = [LayerRoles.RASTER];
 
-    constructor(private readonly layerAdapterFactory: LayerAdapterFactory) {}
+    constructor(
+        private readonly layerAdapterFactory: LayerAdapterFactory,
+        label: string,
+    ) {
+        this.label = label;
+    }
 
     createMapLayer(
         _role: LayerRole,

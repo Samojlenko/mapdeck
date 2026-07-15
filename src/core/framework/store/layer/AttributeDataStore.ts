@@ -141,9 +141,18 @@ export class AttributeDataStore {
     ): Promise<void> {
         const dataTable = this._getDataTable(nodeId);
         const config = this._extractSourceConfig(dataTable);
-        const adapter = this.rootStore.attributeAdapterFactory.get(dataTable);
+        const protocol = this.rootStore.protocolRegistry.getByRole(
+            dataTable.role,
+        );
 
-        const result = await adapter.fetchPage(
+        if (!protocol?.fetchAttributes) {
+            logger.warn(
+                `[AttributeData] Protocol for role "${dataTable.role}" does not support fetchAttributes`,
+            );
+            return;
+        }
+
+        const result = await protocol.fetchAttributes(
             config,
             options,
             controller.signal,

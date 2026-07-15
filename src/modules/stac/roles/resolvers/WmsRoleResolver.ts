@@ -1,6 +1,5 @@
-import { LayerRoles, makeRenderDescriptor } from "@core/framework/types";
-import type { MapLayer } from "@core/framework/types";
-import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
+import { LayerRoles } from "@core/framework/types";
+import type { IRoleResolver, ResolveContext, ResolvedRenderCapability } from "../IRoleResolver";
 import type { STACAsset } from "../../types";
 
 export class WmsRoleResolver implements IRoleResolver {
@@ -10,25 +9,14 @@ export class WmsRoleResolver implements IRoleResolver {
         return asset.roles?.includes("wms") ?? false;
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): MapLayer {
-        const layerConfig = ctx.registry.create(LayerRoles.RASTER);
-        const cfg = layerConfig as unknown as Record<string, unknown>;
-        cfg.url = asset.href;
-        cfg.type = "wms";
-        // wms:layers from WMS Extension (preferred) or LAYERS from URL
-        if (asset["wms:layers"]) cfg.layers = asset["wms:layers"];
-        if (asset["wms:styles"]) cfg.styles = asset["wms:styles"];
-
+    resolve(
+        asset: STACAsset,
+        _ctx: ResolveContext,
+    ): ResolvedRenderCapability {
         return {
-            id: ctx.assetKey,
             category: "render",
-            label: asset.title ?? ctx.assetKey,
-            ...(asset.type ? { mimeType: asset.type } : {}),
-            render: makeRenderDescriptor(
-                LayerRoles.RASTER,
-                asset.href,
-                layerConfig,
-            ),
+            role: LayerRoles.RASTER,
+            sourceUrl: asset.href,
         };
     }
 }

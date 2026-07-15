@@ -7,7 +7,7 @@ import { logger } from "@core/shared/diagnostics/logger";
 import type { MapToolComponentProps, LayerNode } from "@core/framework/types";
 
 import type { FeatureGroup, CollectResult, ClickPosition } from "../types";
-import { featureCollector } from "../utils/FeatureCollector";
+import { FeatureCollector } from "../utils/FeatureCollector";
 import { showClickMarker, removeClickMarker } from "../utils/clickMarker";
 import { DataTable } from "@core/ui/composites/data-table";
 import { LoadingScreen } from "@core/ui/components";
@@ -23,9 +23,15 @@ import styles from "./Panel.module.css";
 export const FeatureInfoComponent: (
     props: MapToolComponentProps,
 ) => React.ReactNode = observer(
+    // eslint-disable-next-line complexity
     ({ map, rootStore, deactivate, overlayManager }) => {
         const dict = rootStore.localeStore.t("feature-info");
         const coreDict = rootStore.localeStore.t("core");
+        const collectorRef = React.useRef<FeatureCollector | null>(null);
+        if (!collectorRef.current) {
+            collectorRef.current = new FeatureCollector(rootStore);
+        }
+
         const [groups, setGroups] = React.useState<FeatureGroup[]>([]);
         const [selectedIndex, setSelectedIndex] = React.useState(0);
         const [loading, setLoading] = React.useState(false);
@@ -62,7 +68,7 @@ export const FeatureInfoComponent: (
                 const controller = new AbortController();
                 abortRef.current = controller;
 
-                featureCollector
+                collectorRef.current!
                     .collect(
                         {
                             screenX: screenPoint.x,

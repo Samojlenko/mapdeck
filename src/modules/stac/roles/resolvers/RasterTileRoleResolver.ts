@@ -1,12 +1,7 @@
-import { LayerRoles, makeRenderDescriptor } from "@core/framework/types";
-import type { MapLayer } from "@core/framework/types";
-import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
+import { LayerRoles } from "@core/framework/types";
+import type { IRoleResolver, ResolveContext, ResolvedRenderCapability } from "../IRoleResolver";
 import type { STACAsset } from "../../types";
 
-/**
- * Handles XYZ raster tiles.
- * Matches: role "raster-tile" (custom) or {z}/{x}/{y} pattern in the URL.
- */
 export class RasterTileRoleResolver implements IRoleResolver {
     readonly priority = 20;
 
@@ -16,22 +11,14 @@ export class RasterTileRoleResolver implements IRoleResolver {
         return hasRole || isXyz;
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): MapLayer {
-        const layerConfig = ctx.registry.create(LayerRoles.RASTER);
-        const cfg = layerConfig as unknown as Record<string, unknown>;
-        cfg.url = asset.href;
-        cfg.type = "xyz";
-
+    resolve(
+        asset: STACAsset,
+        _ctx: ResolveContext,
+    ): ResolvedRenderCapability {
         return {
-            id: ctx.assetKey,
             category: "render",
-            label: asset.title ?? ctx.assetKey,
-            ...(asset.type ? { mimeType: asset.type } : {}),
-            render: makeRenderDescriptor(
-                LayerRoles.RASTER,
-                asset.href,
-                layerConfig,
-            ),
+            role: LayerRoles.RASTER,
+            sourceUrl: asset.href,
         };
     }
 }

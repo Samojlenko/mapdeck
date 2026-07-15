@@ -19,6 +19,20 @@ export interface WfsResponse {
     totalFeatures: number;
 }
 
+/**
+ * Parsed WFS URL with clean base URL and extracted query parameters.
+ */
+export interface ParsedWfsUrl {
+    /** Clean endpoint URL without query parameters */
+    baseUrl: string;
+    /** WFS version from VERSION param */
+    version?: string;
+    /** Type names from TYPENAMES param */
+    typeNames?: string;
+    /** Output format from OUTPUTFORMAT param */
+    outputFormat?: string;
+}
+
 export interface WfsRequestParams {
     /** WFS endpoint URL (should already contain typeName and other required params) */
     url: string;
@@ -36,6 +50,8 @@ export interface WfsRequestParams {
     sortBy?: string | undefined;
     /** Optional sort direction */
     sortDirection?: "asc" | "desc" | undefined;
+    /** Bounding box filter (minLng,minLat,maxLng,maxLat) */
+    bbox?: string | undefined;
     /** Additional custom parameters */
     extraParams?: Record<string, string> | undefined;
 }

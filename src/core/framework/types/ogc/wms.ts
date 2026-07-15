@@ -51,4 +51,10 @@ export interface ParsedWmsUrl {
     layers: string;
     /** WMS styles from STYLES param */
     styles: string;
+    /** WMS version from VERSION param */
+    version?: string;
+    /** Spatial reference system from SRS param (WMS 1.1) */
+    srs?: string;
+    /** Spatial reference system from CRS param (WMS 1.3) */
+    crs?: string;
 }
