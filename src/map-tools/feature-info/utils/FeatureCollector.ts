@@ -52,7 +52,8 @@ export class FeatureCollector {
         if (!mapLayer) return;
 
         const role = mapLayer.render.role;
-        const protocol = this.rootStore.protocolRegistry.getByRole(role);
+        const protocols = this.rootStore.protocolRegistry.getProtocolsByRole(role);
+        const protocol = protocols.find((p) => p.getFeatureInfo);
 
         if (!protocol?.getFeatureInfo) {
             this.addPlaceholder(node, role, params, features);

@@ -1,4 +1,4 @@
-import { makeAutoObservable, reaction, type IReactionDisposer } from "mobx";
+import { makeAutoObservable, reaction, runInAction, type IReactionDisposer } from "mobx";
 import type { RootStore } from "@core/framework/store";
 import type { BaseMapConfig } from "@core/framework/types";
 import { checkBasemapHealth } from "@map-tools/basemap/utils/checkBasemapHealth";
@@ -152,7 +152,9 @@ export class BasemapStore {
                 this.applyBasemap(validBasemap);
             }
         } finally {
-            this._initInProgress = false;
+            runInAction(() => {
+                this._initInProgress = false;
+            });
         }
     }
 

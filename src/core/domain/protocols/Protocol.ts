@@ -41,8 +41,13 @@ export interface ProtocolFeatureInfoParams {
  *  4. Query feature info at a point              [optional]
  *
  * Cardinality:
- *   - One role → exactly one protocol
+ *   - Many protocols → one role (e.g. XYZ, WMS, COG for RASTER)
  *   - One protocol → many roles (via protocol.roles)
+ *
+ * Protocol selection:
+ *   Consumer uses getProtocolsByRole(role) and selects the right protocol
+ *   by checking for optional methods (getFeatureInfo, fetchAttributes) or
+ *   by exact protocolId when known from the source resolver.
  *
  * Registration: ProtocolRegistry (by role)
  * Consumers:    LayerManager, AttributeDataStore, FeatureInfoTool, STAC module

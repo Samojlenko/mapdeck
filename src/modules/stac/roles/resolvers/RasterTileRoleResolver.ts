@@ -19,6 +19,7 @@ export class RasterTileRoleResolver implements IRoleResolver {
             category: "render",
             role: LayerRoles.RASTER,
             sourceUrl: asset.href,
+            protocolId: "xyz",
         };
     }
 }

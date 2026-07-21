@@ -17,6 +17,7 @@ export class WmsRoleResolver implements IRoleResolver {
             category: "render",
             role: LayerRoles.RASTER,
             sourceUrl: asset.href,
+            protocolId: "wms",
         };
     }
 }

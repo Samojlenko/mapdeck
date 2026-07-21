@@ -6,7 +6,7 @@ import type {
     LayerRole,
 } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
-import type { ProtocolRegistry } from "@core/domain/protocols";
+import type { ProtocolRegistry, Protocol } from "@core/domain/protocols";
 import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import type {
     ResolveContext,
@@ -99,17 +99,29 @@ function resolveSingleAsset(params: ResolveSingleParams): SingleAssetCapabilitie
     return { download: capability };
 }
 
+function findProtocol(
+    resolved: ResolvedRenderCapability,
+    protocolRegistry: ProtocolRegistry,
+): Protocol | undefined {
+    if (resolved.protocolId) {
+        const p = protocolRegistry.getById(resolved.protocolId);
+        if (p) return p;
+    }
+    return protocolRegistry.getByRole(resolved.role);
+}
+
 function resolveMapLayer(
     resolved: ResolvedRenderCapability,
     assetKey: string,
     asset: STACAsset,
     protocolRegistry: ProtocolRegistry,
 ): SingleAssetCapabilities {
-    const protocol = protocolRegistry.getByRole(resolved.role);
+    const protocol = findProtocol(resolved, protocolRegistry);
     if (!protocol) {
-        logger.warn(
-            `[STAC] No protocol for role "${resolved.role}" (asset: ${assetKey})`,
-        );
+        const hint = resolved.protocolId
+            ? `id "${resolved.protocolId}"`
+            : `role "${resolved.role}"`;
+        logger.warn(`[STAC] No protocol for ${hint} (asset: ${assetKey})`);
         return {};
     }
 

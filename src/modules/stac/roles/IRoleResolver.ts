@@ -16,6 +16,8 @@ export interface ResolvedRenderCapability {
     category: "render";
     role: LayerRole;
     sourceUrl: string;
+    /** Optional protocol id hint for ProtocolRegistry lookup. */
+    protocolId?: string;
 }
 
 export type ResolveResult =
