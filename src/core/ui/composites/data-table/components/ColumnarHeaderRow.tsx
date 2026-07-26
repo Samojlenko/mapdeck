@@ -65,6 +65,7 @@ export const ColumnarHeaderRow: React.FC<ColumnarHeaderRowProps> = React.memo(
                     {columns.map((col) => (
                         <th key={col}>
                             <input
+                                name={`filter-${col}`}
                                 type="text"
                                 className={styles.filterInput}
                                 placeholder={

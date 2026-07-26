@@ -24,6 +24,7 @@ const LayerTreeHeader: (props: LayerTreeHeaderProps) => React.ReactNode =
         return (
             <div className={styles.layerTree__header}>
                 <input
+                    id="layer-tree-search"
                     type="text"
                     className={styles.layerTree__searchInput}
                     placeholder={dict["search.placeholder"]}

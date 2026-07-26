@@ -90,8 +90,11 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
             return true;
         }
 
+        const updatedLayer = managedLayer.layer.clone({ visible });
+
         this.layers.set(layerId, {
             ...managedLayer,
+            layer: updatedLayer,
             visible,
         });
 
@@ -100,9 +103,9 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
     }
 
     getActiveLayers(): Layer[] {
-        return Array.from(this.layers.values())
-            .filter((managedLayer) => managedLayer.visible)
-            .map((managedLayer) => managedLayer.layer);
+        return Array.from(this.layers.values()).map(
+            (managedLayer) => managedLayer.layer,
+        );
     }
 
     private updateOverlayLayers(): void {

@@ -31,6 +31,9 @@ export class LayerManager {
      */
     private renderUnits = new Map<string, RenderUnit>();
 
+    /** IDs of units that have been initialized via addToMap at least once. */
+    private _initializedUnits = new Set<string>();
+
     constructor(rootStore: RootStore, mapContext: MapContext) {
         this.rootStore = rootStore;
         this.mapContext = mapContext;
@@ -60,13 +63,16 @@ export class LayerManager {
 
         this.isInitialized = false;
         this.renderUnits.clear();
+        this._initializedUnits.clear();
     }
 
     // ==================== Diff-based sync ====================
 
     /**
-     * Sync all layers with current layer tree state using diff logic.
-     * Layer grouping is handled by buildGroupedRenderUnits.
+     * Sync all layers with current layer tree state using visibility-aware diff logic.
+     *
+     * Prefers updateVisibility over destroy+recreate when only the visibility flag
+     * has changed, preserving the adapter's internal state (loaders, workers, etc.).
      */
     private syncAllLayers(): void {
         if (!this.isInitialized || !this.isMapLoaded) return;
@@ -78,45 +84,76 @@ export class LayerManager {
                 this.rootStore.protocolRegistry,
             );
 
-            this._removeStaleUnits(desired);
-            this._addNewUnits(desired);
-            this._updateChangedUnits(desired);
+            this._syncUnits(desired);
             this._reorderMapNativeLayers();
         } catch (error) {
             logger.error("Failed to sync layers:", error);
         }
     }
 
-    private _removeStaleUnits(desired: Map<string, RenderUnit>): void {
+    private _syncUnits(desired: Map<string, RenderUnit>): void {
+        this._removeMissingUnits(desired);
+        for (const [id, unit] of desired) {
+            const current = this.renderUnits.get(id);
+            if (!current) {
+                this._handleNewDesiredUnit(unit);
+            } else {
+                this._updateExistingDesiredUnit(current, unit);
+            }
+        }
+    }
+
+    private _removeMissingUnits(desired: Map<string, RenderUnit>): void {
         for (const [id, unit] of this.renderUnits) {
             if (!desired.has(id)) {
                 this._removeRenderUnit(unit);
+                this._initializedUnits.delete(id);
             }
         }
     }
 
-    private _addNewUnits(desired: Map<string, RenderUnit>): void {
-        for (const [id, unit] of desired) {
-            if (!this.renderUnits.has(id)) {
-                this._addRenderUnit(unit);
-            }
+    private _handleNewDesiredUnit(unit: RenderUnit): void {
+        if (unit.visible) {
+            this._addRenderUnit(unit);
+            this._initializedUnits.add(unit.id);
+        }
+        this.renderUnits.set(unit.id, { ...unit });
+    }
+
+    private _updateExistingDesiredUnit(
+        current: RenderUnit,
+        unit: RenderUnit,
+    ): void {
+        this._syncVisibility(current, unit);
+        this._syncConfig(current, unit);
+        this.renderUnits.set(unit.id, { ...unit });
+    }
+
+    private _syncVisibility(current: RenderUnit, unit: RenderUnit): void {
+        if (current.visible === unit.visible) return;
+
+        if (unit.visible && this._initializedUnits.has(unit.id)) {
+            unit.adapter.updateVisibility(unit.id, true, this.mapContext);
+        } else if (unit.visible && !this._initializedUnits.has(unit.id)) {
+            this._addRenderUnit(unit);
+            this._initializedUnits.add(unit.id);
+        } else {
+            unit.adapter.updateVisibility(unit.id, false, this.mapContext);
         }
     }
 
-    private _updateChangedUnits(desired: Map<string, RenderUnit>): void {
-        for (const [id, unit] of desired) {
-            const current = this.renderUnits.get(id);
-            if (
-                current &&
-                (this._configsDiffer(
-                    current.descriptor.config,
-                    unit.descriptor.config,
-                ) ||
-                    current.descriptor.sourceUrl !== unit.descriptor.sourceUrl)
-            ) {
-                this._updateExistingUnit(current, unit);
-            }
-        }
+    private _syncConfig(current: RenderUnit, unit: RenderUnit): void {
+        if (!this._initializedUnits.has(unit.id)) return;
+        if (
+            !this._configsDiffer(
+                current.descriptor.config,
+                unit.descriptor.config,
+            ) &&
+            current.descriptor.sourceUrl === unit.descriptor.sourceUrl
+        )
+            return;
+
+        this._updateExistingUnit(current, unit);
     }
 
     // ==================== Render unit operations ====================
@@ -126,7 +163,7 @@ export class LayerManager {
 
         try {
             unit.adapter.addToMap(unit.id, unit.descriptor, this.mapContext);
-            this.renderUnits.set(unit.id, unit);
+            this.renderUnits.set(unit.id, { ...unit });
         } catch (error) {
             logger.error(`Failed to add render unit "${unit.id}":`, error);
         }
@@ -150,7 +187,7 @@ export class LayerManager {
         desired: RenderUnit,
     ): void {
         desired.adapter.updateConfig(desired, this.mapContext);
-        this.renderUnits.set(desired.id, desired);
+        this.renderUnits.set(desired.id, { ...desired });
     }
 
     // ==================== Reordering ====================

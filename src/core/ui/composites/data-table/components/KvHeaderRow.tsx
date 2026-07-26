@@ -53,6 +53,7 @@ export const KvHeaderRow: React.FC<KvHeaderRowProps> = React.memo(
                 <tr>
                     <th>
                         <input
+                            name="filter-attribute"
                             type="text"
                             className={styles.filterInput}
                             placeholder={
@@ -66,6 +67,7 @@ export const KvHeaderRow: React.FC<KvHeaderRowProps> = React.memo(
                     </th>
                     <th>
                         <input
+                            name="filter-value"
                             type="text"
                             className={styles.filterInput}
                             placeholder={dict["attributeTable.filterValues"]}

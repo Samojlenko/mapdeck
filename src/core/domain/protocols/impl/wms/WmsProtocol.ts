@@ -216,6 +216,7 @@ function buildGroupRenderUnit(
             tileUrl,
             groupConfig,
         ),
+        visible: true,
     };
 }
 

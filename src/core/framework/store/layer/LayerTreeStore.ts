@@ -59,7 +59,7 @@ export class LayerTreeStore {
     );
 
     constructor(readonly rootStore: RootStore) {
-        makeAutoObservable(this, { rootStore: false, layerNodes: false });
+        makeAutoObservable(this, { rootStore: false, layerNodes: false, visibility: false });
         this.setupReactions();
     }
 
@@ -94,10 +94,6 @@ export class LayerTreeStore {
 
     get visibility() {
         return this.rootStore.visibilityStore;
-    }
-
-    private get _isAdapterReady(): boolean {
-        return this._adapter !== null;
     }
 
     private get _dataSourceUrl(): string | undefined {
@@ -182,9 +178,9 @@ export class LayerTreeStore {
     }
 
     async fetchLayerTree(signal?: AbortSignal): Promise<void> {
-        if (!this._isAdapterReady) {
+        if (this._adapter === null) {
             await this._initAdapterFromSettings();
-            if (!this._isAdapterReady || signal?.aborted) return;
+            if (this._adapter === null || signal?.aborted) return;
         }
 
         this.clearSearch();
@@ -198,7 +194,7 @@ export class LayerTreeStore {
                 this._nodes.clear();
                 this.buildTreeFromNodes(treeNodes, null);
             });
-            this.visibility.clearAllExtentCaches();
+            this.rootStore.visibilityStore.clearAllExtentCaches();
             this._setLoadingState(false);
         } catch (error) {
             if (signal?.aborted) return;

@@ -13,7 +13,7 @@ export function buildDesiredRenderUnits(
     const desired = new Map<string, RenderUnit>();
 
     for (const item of snapshot) {
-        if (!item.visible || !item.descriptor) continue;
+        if (!item.descriptor) continue;
 
         const role = item.descriptor.role;
         const protocol = protocolRegistry.getByRole(role);
@@ -24,6 +24,7 @@ export function buildDesiredRenderUnits(
             nodeIds: [item.id],
             adapter: protocol.getAdapter(role),
             descriptor: item.descriptor,
+            visible: item.visible,
         });
     }
 

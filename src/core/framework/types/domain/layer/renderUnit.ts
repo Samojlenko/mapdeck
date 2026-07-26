@@ -14,6 +14,7 @@ export interface RenderUnit<TRole extends LayerRole = LayerRole> {
     nodeIds: string[];
     adapter: LayerAdapter;
     descriptor: RenderDescriptor<TRole>;
+    visible: boolean;
 }
 
 /**
